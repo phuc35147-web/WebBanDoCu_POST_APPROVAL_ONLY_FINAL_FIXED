@@ -1,10 +1,349 @@
-<!DOCTYPE html><html lang="vi"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tin nhắn - Chợ Đồ Cũ</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css"><link rel="stylesheet" href="/css/style.css"><style>
-body{background:#f8fafc}.messages-page{max-width:1180px;margin:30px auto;padding:0 16px}.messages-shell{height:700px;background:#fff;border:1px solid #e2e8f0;border-radius:20px;overflow:hidden;display:grid;grid-template-columns:330px 1fr;box-shadow:0 12px 35px rgba(15,23,42,.08)}.conversation-list{border-right:1px solid #e2e8f0;overflow:auto}.conversation-head{padding:20px;border-bottom:1px solid #e2e8f0}.conversation-item{display:flex;gap:12px;padding:15px 18px;border-bottom:1px solid #f1f5f9;cursor:pointer}.conversation-item:hover,.conversation-item.active{background:#eff6ff}.conv-avatar{width:46px;height:46px;flex:0 0 46px;border-radius:50%;background:#ec4899;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800}.chat-window{display:flex;flex-direction:column;min-width:0}.chat-window-head{padding:17px 20px;border-bottom:1px solid #e2e8f0}.messages-body{flex:1;overflow:auto;padding:20px;background:#f8fafc}.message-compose{padding:13px;border-top:1px solid #e2e8f0;display:flex;gap:8px}.message-compose input{flex:1;border:1px solid #cbd5e1;border-radius:999px;padding:11px 15px}.message-compose button{width:45px;height:45px;border:0;border-radius:50%;background:#2563eb;color:#fff}.msg{max-width:70%;padding:10px 14px;border-radius:15px;margin-bottom:10px}.msg.me{margin-left:auto;background:#2563eb;color:#fff}.msg.them{background:#fff;border:1px solid #e2e8f0}.msg small{display:block;opacity:.65;margin-top:3px}@media(max-width:800px){.messages-shell{grid-template-columns:1fr;height:calc(100vh - 130px)}.conversation-list{display:none}}
-</style></head><body><header class="main-header" style="min-height:auto"><div class="container d-flex justify-content-between align-items-center py-3"><a href="/" class="brand-logo text-decoration-none text-white fw-bold d-flex align-items-center gap-2"><i class="bi bi-recycle"></i> CHỢ ĐỒ CŨ</a><a href="/account.html" class="btn btn-warning rounded-pill fw-bold">Tài khoản</a></div></header><main class="messages-page"><div class="mb-3"><span class="section-kicker">KẾT NỐI</span><h1 class="fw-bold">Tin nhắn</h1><p class="text-muted">Trao đổi trực tiếp với người mua hoặc người bán. Chợ Đồ Cũ chỉ là nền tảng trung gian kết nối.</p></div><div class="messages-shell"><aside class="conversation-list"><div class="conversation-head"><strong>Cuộc trò chuyện</strong></div><div id="conversationList"><div class="text-muted p-4">Đang tải...</div></div></aside><section class="chat-window"><div id="chatHead" class="chat-window-head"><strong>Chọn một cuộc trò chuyện</strong></div><div id="messagesBody" class="messages-body"><div class="text-center text-muted py-5"><i class="bi bi-chat-dots fs-1 d-block mb-2"></i>Chọn tin nhắn bên trái để bắt đầu.</div></div><form id="messageForm" class="message-compose d-none"><input id="messageInput" maxlength="2000" placeholder="Nhập tin nhắn..."><button><i class="bi bi-send"></i></button></form></section></div></main><script>
-const token=localStorage.getItem('token');let me=0,current=null;
-function esc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));}
-async function init(){if(!token){location.href='/auth.html?mode=login';return;}try{const ar=await fetch('/api/account',{headers:{Authorization:`Bearer ${token}`}});const a=await ar.json();me=a.profile?.MaNguoiDung||a.profile?.maNguoiDung||0;const r=await fetch('/api/messages/conversations',{headers:{Authorization:`Bearer ${token}`}});const data=await r.json();const list=document.getElementById('conversationList');if(!data.length){list.innerHTML='<div class="text-muted p-4">Chưa có cuộc trò chuyện.</div>';return;}list.innerHTML=data.map((x,i)=>`<div class="conversation-item" data-user="${x.MaDoiPhuong}" data-product="${x.MaSanPham||''}" onclick="openConversation(${x.MaDoiPhuong},${x.MaSanPham||0},'${esc(x.TenDoiPhuong)}','${esc(x.TenSanPham||'')}')"><div class="conv-avatar">${esc((x.TenDoiPhuong||'N').charAt(0))}</div><div class="min-w-0"><strong>${esc(x.TenDoiPhuong)}</strong><div class="small text-muted text-truncate">${esc(x.TenSanPham||'Tin nhắn')}</div><div class="small text-truncate">${esc(x.NoiDung)}</div></div></div>`).join('');}catch(e){document.getElementById('conversationList').innerHTML='<div class="text-danger p-4">Không thể tải tin nhắn.</div>';}}
-async function openConversation(userId,productId,name,product){current={userId,productId};document.getElementById('chatHead').innerHTML=`<strong>${esc(name)}</strong><div class="small text-muted">${esc(product)}</div>`;document.getElementById('messageForm').classList.remove('d-none');document.querySelectorAll('.conversation-item').forEach(x=>x.classList.remove('active'));event?.currentTarget?.classList.add('active');await loadMessages();}
-async function loadMessages(){const r=await fetch(`/api/messages?userId=${current.userId}&productId=${current.productId||''}`,{headers:{Authorization:`Bearer ${token}`}});const data=await r.json();const b=document.getElementById('messagesBody');b.innerHTML=data.length?data.map(m=>`<div class="msg ${Number(m.MaNguoiGui)===Number(me)?'me':'them'}">${esc(m.NoiDung)}<small>${new Date(m.NgayGui).toLocaleString('vi-VN')}</small></div>`).join(''):'<div class="text-center text-muted py-5">Chưa có tin nhắn.</div>';b.scrollTop=b.scrollHeight;}
-document.getElementById('messageForm').addEventListener('submit',async e=>{e.preventDefault();const input=document.getElementById('messageInput'),text=input.value.trim();if(!text||!current)return;input.disabled=true;try{const r=await fetch('/api/messages',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({userId:current.userId,productId:current.productId||null,noiDung:text})});const d=await r.json();if(!r.ok)throw new Error(d.message);input.value='';await loadMessages();}catch(e){alert(e.message);}finally{input.disabled=false;input.focus();}});init();
-</script></body></html>
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Tin nhắn - Chợ Đồ Cũ</title>
+
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/messages.css">
+</head>
+
+<body>
+
+<header class="main-header messages-header">
+
+    <div class="container-fluid messages-topbar">
+
+        <a href="/" class="messages-logo">
+            <span class="logo-icon">
+                <i class="bi bi-recycle"></i>
+            </span>
+
+            <span>CHỢ ĐỒ CŨ</span>
+        </a>
+
+        <div class="messages-top-actions">
+
+            <a href="/" class="top-link">
+                <i class="bi bi-house"></i>
+                Trang chủ
+            </a>
+
+            <a href="/account.html" class="top-link">
+                <i class="bi bi-person-circle"></i>
+                Tài khoản
+            </a>
+
+            <a href="/product-detail.html" class="post-button">
+                <i class="bi bi-plus-lg"></i>
+                Đăng tin
+            </a>
+
+        </div>
+
+    </div>
+
+</header>
+
+
+<main class="messages-page">
+
+    <div class="messages-title">
+
+        <div>
+            <span class="section-kicker">
+                KẾT NỐI
+            </span>
+
+            <h1>Tin nhắn</h1>
+
+            <p>
+                Trao đổi trực tiếp với người mua và người bán trên
+                <strong>Chợ Đồ Cũ</strong>.
+            </p>
+        </div>
+
+    </div>
+
+
+    <div class="messages-shell">
+
+        <!-- =================================================
+             BÊN TRÁI - DANH SÁCH CUỘC TRÒ CHUYỆN
+        ================================================== -->
+
+        <aside class="conversation-list">
+
+            <div class="conversation-head">
+
+                <div class="conversation-heading">
+
+                    <strong>Chat</strong>
+
+                    <span id="conversationCount"
+                          class="conversation-count">
+                        0
+                    </span>
+
+                </div>
+
+
+                <div class="conversation-search">
+
+                    <i class="bi bi-search"></i>
+
+                    <input
+                        id="conversationSearch"
+                        type="search"
+                        placeholder="Nhập 3 ký tự để bắt đầu tìm kiếm"
+                        autocomplete="off">
+
+                    <button
+                        id="clearConversationSearch"
+                        type="button"
+                        title="Xóa tìm kiếm">
+
+                        <i class="bi bi-three-dots-vertical"></i>
+
+                    </button>
+
+                </div>
+
+
+                <div class="conversation-tabs">
+
+                    <button
+                        type="button"
+                        class="conversation-tab active"
+                        data-tab="all">
+
+                        Tất cả
+
+                    </button>
+
+                    <button
+                        type="button"
+                        class="conversation-tab"
+                        data-tab="unread">
+
+                        Chưa đọc
+
+                    </button>
+
+                    <button
+                        type="button"
+                        class="conversation-tab"
+                        data-tab="ignored">
+
+                        Tin rác / Bỏ qua
+
+                    </button>
+
+                </div>
+
+            </div>
+
+
+            <!-- CHỈ KHU VỰC NÀY CUỘN -->
+
+            <div id="conversationList">
+
+                <div class="conversation-loading">
+
+                    <div class="spinner-border spinner-border-sm"></div>
+
+                    <span>Đang tải cuộc trò chuyện...</span>
+
+                </div>
+
+            </div>
+
+        </aside>
+
+
+        <!-- =================================================
+             BÊN PHẢI - KHUNG CHAT
+        ================================================== -->
+
+        <section class="chat-window">
+
+
+            <!-- HEADER CHAT -->
+
+            <div
+                id="chatHead"
+                class="chat-window-head">
+
+                <div class="empty-chat-head">
+
+                    <div class="empty-chat-icon">
+                        <i class="bi bi-chat-dots"></i>
+                    </div>
+
+                    <div>
+
+                        <strong>
+                            Chọn một cuộc trò chuyện
+                        </strong>
+
+                        <div class="realtime-status">
+
+                            <span
+                                id="realtimeDot"
+                                class="realtime-dot offline">
+                            </span>
+
+                            <span id="realtimeText">
+                                Đang kết nối...
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- =================================================
+                 LỊCH SỬ CHAT
+                 CHỈ KHU VỰC NÀY CUỘN
+            ================================================== -->
+
+            <div
+                id="messagesBody"
+                class="messages-body">
+
+                <div class="empty-chat">
+
+                    <div class="empty-chat-large-icon">
+
+                        <i class="bi bi-chat-square-text"></i>
+
+                    </div>
+
+                    <h3>
+                        Tin nhắn của bạn
+                    </h3>
+
+                    <p>
+                        Chọn một cuộc trò chuyện bên trái
+                        để bắt đầu trao đổi.
+                    </p>
+
+                </div>
+
+            </div>
+
+
+            <!-- =================================================
+                 GỢI Ý TIN NHẮN
+            ================================================== -->
+
+            <div
+                id="quickReplies"
+                class="quick-replies d-none">
+
+                <button
+                    type="button"
+                    class="quick-reply">
+
+                    Sản phẩm còn không ạ?
+
+                </button>
+
+                <button
+                    type="button"
+                    class="quick-reply">
+
+                    Cho mình thêm thông tin?
+
+                </button>
+
+                <button
+                    type="button"
+                    class="quick-reply">
+
+                    Còn thương lượng không?
+
+                </button>
+
+                <button
+                    type="button"
+                    class="quick-reply">
+
+                    Mình muốn xem sản phẩm
+
+                </button>
+
+            </div>
+
+
+            <!-- =================================================
+                 Ô NHẬP TIN NHẮN
+            ================================================== -->
+
+            <form
+                id="messageForm"
+                class="message-compose d-none">
+
+                <button
+                    type="button"
+                    class="compose-icon"
+                    title="Hình ảnh">
+
+                    <i class="bi bi-image"></i>
+
+                </button>
+
+
+                <button
+                    type="button"
+                    class="compose-icon"
+                    title="Địa chỉ">
+
+                    <i class="bi bi-geo-alt"></i>
+
+                </button>
+
+
+                <input
+                    id="messageInput"
+                    type="text"
+                    maxlength="2000"
+                    autocomplete="off"
+                    placeholder="Nhập tin nhắn...">
+
+
+                <button
+                    id="sendButton"
+                    type="submit"
+                    class="send-button"
+                    title="Gửi">
+
+                    <i class="bi bi-send-fill"></i>
+
+                </button>
+
+            </form>
+
+        </section>
+
+    </div>
+
+</main>
+
+
+<script src="/js/messages.js"></script>
+
+</body>
+</html>
