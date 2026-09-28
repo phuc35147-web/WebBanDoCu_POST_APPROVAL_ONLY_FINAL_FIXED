@@ -711,6 +711,17 @@ document.addEventListener("DOMContentLoaded", () => {
             if (preview) preview.classList.add('d-none');
         });
     }
+    
 
 });
+function openMessages() {
+    const token = localStorage.getItem('token');
+
+    if (!token) {
+        window.location.href = '/auth.html?mode=login';
+        return;
+    }
+
+    window.location.href = '/messages.html';
+}
     
