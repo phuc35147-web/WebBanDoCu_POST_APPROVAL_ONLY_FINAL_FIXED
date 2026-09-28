@@ -67,15 +67,16 @@
         <i class="bi bi-bell"></i>
     </button>
 
-    <!-- Liên hệ -->
-    <button
+  <!-- Lịch sử chat -->
+<button
+    id="chatHistoryButton"
     class="btn btn-outline-light rounded-pill px-3 py-1 text-nowrap d-none d-sm-inline-flex align-items-center gap-1"
     type="button"
-    onclick="openMessages()"
+    onclick="openChatHistory()"
     aria-label="Lịch sử chat">
     <i class="bi bi-chat-square-text"></i>
     Lịch sử chat
-    </button>
+</button>
 
     <!-- ==============================
     KHU VỰC ĐĂNG NHẬP / TÀI KHOẢN
@@ -735,5 +736,17 @@
             categoryStrip.scrollBy({ left: categoryStrip.clientWidth * 0.8, behavior: 'smooth' });
         };
     </script>
+    <script>
+function openChatHistory() {
+    const token = localStorage.getItem('token');
+
+    if (!token) {
+        window.location.href = '/auth.html?mode=login';
+        return;
+    }
+
+    window.location.href = '/messages.html';
+}
+</script>
 </body>
 </html>

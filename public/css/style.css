@@ -1667,3 +1667,129 @@ body {
         font-size: 1.2rem !important;
     }
 }
+/* ===== CHAT NÂNG CẤP ===== */
+
+.seller-chat-header {
+    gap: 12px;
+}
+
+.seller-chat-person {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.seller-chat-avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: #ec4899;
+    color: #fff;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-weight: 800;
+    overflow: hidden;
+    flex: 0 0 42px;
+}
+
+.seller-chat-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.seller-chat-status {
+    font-size: .72rem;
+    opacity: .75;
+    margin-top: 2px;
+}
+
+.seller-chat-product {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+
+    margin: 10px 12px 0;
+    padding: 9px;
+
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+
+    text-decoration: none;
+    color: #1e293b;
+}
+
+.seller-chat-product img {
+    width: 54px;
+    height: 54px;
+
+    object-fit: cover;
+    border-radius: 9px;
+}
+
+.seller-chat-product-title {
+    font-size: .86rem;
+    font-weight: 800;
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.seller-chat-product-price {
+    font-size: .82rem;
+    color: #dc2626;
+    font-weight: 800;
+}
+
+.seller-chat-row {
+    display: flex;
+    margin-bottom: 10px;
+}
+
+.seller-chat-row.me {
+    justify-content: flex-end;
+}
+
+.seller-chat-row.them {
+    justify-content: flex-start;
+}
+
+.seller-chat-wrap {
+    max-width: 82%;
+}
+
+.seller-chat-name {
+    font-size: .7rem;
+    color: #64748b;
+    margin: 0 7px 3px;
+}
+
+.seller-chat-row.me .seller-chat-name {
+    text-align: right;
+}
+
+.chat-bubble {
+    margin-bottom: 0;
+    word-break: break-word;
+}
+
+.seller-chat-meta {
+    font-size: .65rem;
+    opacity: .7;
+
+    display: flex;
+    gap: 5px;
+    justify-content: flex-end;
+
+    margin-top: 4px;
+}
+
+.seller-chat-row.them .seller-chat-meta {
+    justify-content: flex-start;
+}

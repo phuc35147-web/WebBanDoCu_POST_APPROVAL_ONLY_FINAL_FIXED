@@ -61,14 +61,670 @@ function changeImage(el,src){document.getElementById('mainProductImage').src=src
 async function loadSimilar(cat,id){try{const r=await fetch('/api/products?maDanhMuc='+encodeURIComponent(cat));const a=await r.json();const items=(Array.isArray(a)?a:[]).filter(x=>Number(x.MaSanPham)!==Number(id)).slice(0,5);if(!items.length)return;document.getElementById('similarProducts').innerHTML=items.map(productCard).join('');document.getElementById('similarSection').classList.remove('d-none');}catch(e){}}
 async function toggleSave(){const token=localStorage.getItem('token');if(!token){location.href='/auth.html?mode=login';return;}alert('Tin đã được ghi nhận. Chức năng đồng bộ danh sách tin lưu đang được hoàn thiện.');}
 
-function closeChat(){document.querySelector('.seller-chat-panel')?.remove();}
-async function openSellerChat(){
- const token=localStorage.getItem('token');
- if(!token){location.href='/auth.html?mode=login';return;}
- if(Number(currentOtherUser)===Number(JSON.parse(localStorage.getItem('user')||'{}').maNguoiDung||JSON.parse(localStorage.getItem('user')||'{}').MaNguoiDung)){alert('Bạn không thể chat với chính mình.');return;}
- const old=document.querySelector('.seller-chat-panel');if(old)old.remove();
- const panel=document.createElement('div');panel.className='seller-chat-panel';panel.innerHTML=`<div class="seller-chat-header"><div><div class="fw-bold">Chat với ${esc(currentProduct.TenNguoiBan||'người bán')}</div><small>${esc(currentProduct.TenSanPham)}</small></div><button class="btn btn-sm text-white" onclick="closeChat()"><i class="bi bi-x-lg"></i></button></div><div id="chatBody" class="seller-chat-body"><div class="chat-empty">Đang tải cuộc trò chuyện...</div></div><form class="seller-chat-compose" onsubmit="sendChat(event)"><input id="chatInput" maxlength="2000" placeholder="Nhập tin nhắn..." autocomplete="off"><button><i class="bi bi-send"></i></button></form>`;
- document.body.appendChild(panel);await loadChat();document.getElementById('chatInput')?.focus();
+let chatStreamAbort = null;
+
+function getCurrentUser() {
+    try {
+        return JSON.parse(
+            localStorage.getItem('user') || '{}'
+        );
+    } catch (_) {
+        return {};
+    }
+}
+
+function getMyId() {
+    const u = getCurrentUser();
+
+    return Number(
+        u.maNguoiDung ||
+        u.MaNguoiDung ||
+        0
+    );
+}
+
+function chatAvatar(name, img) {
+    const letter = esc(
+        (name || 'N')
+            .trim()
+            .charAt(0)
+            .toUpperCase()
+    );
+
+    return img
+        ? `<img src="${esc(img)}"
+             onerror="this.parentElement.innerHTML='${letter}'">`
+        : letter;
+}
+
+function closeChat() {
+    chatStreamAbort?.abort();
+    chatStreamAbort = null;
+
+    document
+        .querySelector('.seller-chat-panel')
+        ?.remove();
+}
+
+
+async function openSellerChat() {
+
+    const token = localStorage.getItem('token');
+
+    if (!token) {
+        location.href =
+            '/auth.html?mode=login';
+
+        return;
+    }
+
+    if (
+        Number(currentOtherUser) ===
+        getMyId()
+    ) {
+        alert(
+            'Bạn không thể chat với chính mình.'
+        );
+
+        return;
+    }
+
+    closeChat();
+
+    const name =
+        currentProduct.TenNguoiBan ||
+        'Người bán';
+
+    const panel =
+        document.createElement('div');
+
+    panel.className =
+        'seller-chat-panel';
+
+    panel.innerHTML = `
+        <div class="seller-chat-header">
+
+            <div class="seller-chat-person flex-grow-1">
+
+                <div class="seller-chat-avatar">
+                    ${chatAvatar(
+                        name,
+                        currentProduct.AnhNguoiBan
+                    )}
+                </div>
+
+                <div class="min-w-0">
+
+                    <div class="fw-bold text-truncate">
+                        Chat với ${esc(name)}
+                    </div>
+
+                    <div class="seller-chat-status">
+                        <span class="online-dot"></span>
+                        Đang trò chuyện
+                    </div>
+
+                </div>
+
+            </div>
+
+            <button
+                class="btn btn-sm text-white"
+                onclick="closeChat()"
+                title="Đóng">
+
+                <i class="bi bi-x-lg"></i>
+
+            </button>
+
+        </div>
+
+
+        <a
+            class="seller-chat-product"
+            href="/product-detail.html?id=${encodeURIComponent(currentChatProduct)}">
+
+            <img
+                src="${esc(
+                    currentProduct.HinhAnh ||
+                    '/uploads/default.jpg'
+                )}"
+                onerror="this.src='/uploads/default.jpg'">
+
+            <div class="min-w-0 flex-grow-1">
+
+                <div class="small text-muted">
+                    Sản phẩm đang trao đổi
+                </div>
+
+                <div class="seller-chat-product-title">
+                    ${esc(
+                        currentProduct.TenSanPham
+                    )}
+                </div>
+
+                <div class="seller-chat-product-price">
+                    ${money(
+                        currentProduct.GiaBan
+                    )}
+                </div>
+
+            </div>
+
+            <i class="bi bi-chevron-right"></i>
+
+        </a>
+
+
+        <div
+            id="chatBody"
+            class="seller-chat-body">
+
+            <div class="chat-empty">
+                Đang tải cuộc trò chuyện...
+            </div>
+
+        </div>
+
+
+        <form
+            class="seller-chat-compose"
+            onsubmit="sendChat(event)">
+
+            <input
+                id="chatInput"
+                maxlength="2000"
+                placeholder="Nhập tin nhắn..."
+                autocomplete="off">
+
+            <button title="Gửi">
+
+                <i class="bi bi-send"></i>
+
+            </button>
+
+        </form>
+    `;
+
+    document.body.appendChild(panel);
+
+    await loadChat();
+
+    connectSellerChatRealtime();
+
+    document
+        .getElementById('chatInput')
+        ?.focus();
+}
+
+
+function renderSellerMessage(m) {
+
+    const me =
+        Number(m.MaNguoiGui) ===
+        getMyId();
+
+    const user =
+        getCurrentUser();
+
+    const name = me
+        ? (
+            user.hoTen ||
+            user.HoTen ||
+            'Bạn'
+        )
+        : (
+            m.TenNguoiGui ||
+            currentProduct.TenNguoiBan ||
+            'Người bán'
+        );
+
+    return `
+        <div
+            class="seller-chat-row ${me ? 'me' : 'them'}"
+            data-message-id="${Number(m.MaTinNhan)}">
+
+            <div class="seller-chat-wrap">
+
+                <div class="seller-chat-name">
+                    ${esc(name)}
+                </div>
+
+                <div class="chat-bubble ${me ? 'me' : 'them'}">
+
+                    ${esc(m.NoiDung)}
+
+                    <div class="seller-chat-meta">
+
+                        <span>
+                            ${new Date(
+                                m.NgayGui
+                            ).toLocaleString('vi-VN')}
+                        </span>
+
+                        ${
+                            me
+                                ? `<span>
+                                    ${
+                                        Number(m.DaDoc) === 1
+                                            ? '✓✓ Đã xem'
+                                            : '✓ Đã gửi'
+                                    }
+                                   </span>`
+                                : ''
+                        }
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+    `;
+}
+
+
+async function loadChat() {
+
+    const token =
+        localStorage.getItem('token');
+
+    const body =
+        document.getElementById('chatBody');
+
+    if (!body) return;
+
+    try {
+
+        const r = await fetch(
+            `/api/messages?userId=${
+                encodeURIComponent(
+                    currentOtherUser
+                )
+            }&productId=${
+                encodeURIComponent(
+                    currentChatProduct
+                )
+            }`,
+            {
+                headers: {
+                    Authorization:
+                        `Bearer ${token}`
+                }
+            }
+        );
+
+        const a = await r.json();
+
+        if (!r.ok) {
+            throw new Error(
+                a.message ||
+                'Không tải được tin nhắn.'
+            );
+        }
+
+        body.innerHTML = a.length
+            ? a.map(
+                renderSellerMessage
+            ).join('')
+            : `
+                <div class="chat-empty">
+                    <i class="bi bi-chat-dots fs-1 d-block mb-2"></i>
+                    Hãy bắt đầu cuộc trò chuyện về sản phẩm này.
+                </div>
+            `;
+
+        body.scrollTop =
+            body.scrollHeight;
+
+        await fetch(
+            '/api/messages/read',
+            {
+                method: 'PATCH',
+
+                headers: {
+                    'Content-Type':
+                        'application/json',
+
+                    Authorization:
+                        `Bearer ${token}`
+                },
+
+                body: JSON.stringify({
+                    userId:
+                        currentOtherUser,
+
+                    productId:
+                        currentChatProduct
+                })
+            }
+        ).catch(() => {});
+
+    } catch (e) {
+
+        body.innerHTML =
+            `<div class="alert alert-danger">
+                ${esc(e.message)}
+            </div>`;
+    }
+}
+
+
+function appendSellerMessage(m) {
+
+    if (
+        !currentProduct ||
+        Number(m.MaSanPham) !==
+        Number(currentChatProduct)
+    ) {
+        return;
+    }
+
+    const sameUsers =
+        (
+            Number(m.MaNguoiGui) ===
+                getMyId() &&
+
+            Number(m.MaNguoiNhan) ===
+                Number(currentOtherUser)
+        )
+
+        ||
+
+        (
+            Number(m.MaNguoiGui) ===
+                Number(currentOtherUser) &&
+
+            Number(m.MaNguoiNhan) ===
+                getMyId()
+        );
+
+    if (!sameUsers) return;
+
+    if (
+        document.querySelector(
+            `#chatBody [data-message-id="${Number(
+                m.MaTinNhan
+            )}"]`
+        )
+    ) {
+        return;
+    }
+
+    const body =
+        document.getElementById(
+            'chatBody'
+        );
+
+    const empty =
+        body?.querySelector(
+            '.chat-empty'
+        );
+
+    if (empty) {
+        empty.remove();
+    }
+
+    body?.insertAdjacentHTML(
+        'beforeend',
+        renderSellerMessage(m)
+    );
+
+    if (body) {
+        body.scrollTop =
+            body.scrollHeight;
+    }
+
+    if (
+        Number(m.MaNguoiGui) !==
+        getMyId()
+    ) {
+
+        fetch(
+            '/api/messages/read',
+            {
+                method: 'PATCH',
+
+                headers: {
+                    'Content-Type':
+                        'application/json',
+
+                    Authorization:
+                        `Bearer ${
+                            localStorage.getItem(
+                                'token'
+                            )
+                        }`
+                },
+
+                body: JSON.stringify({
+                    userId:
+                        currentOtherUser,
+
+                    productId:
+                        currentChatProduct
+                })
+            }
+        ).catch(() => {});
+    }
+}
+
+
+async function connectSellerChatRealtime() {
+
+    chatStreamAbort?.abort();
+
+    chatStreamAbort =
+        new AbortController();
+
+    const token =
+        localStorage.getItem('token');
+
+    while (
+        !chatStreamAbort.signal.aborted &&
+        document.querySelector(
+            '.seller-chat-panel'
+        )
+    ) {
+
+        try {
+
+            const r = await fetch(
+                '/api/messages/stream',
+                {
+                    headers: {
+                        Authorization:
+                            `Bearer ${token}`,
+
+                        Accept:
+                            'text/event-stream'
+                    },
+
+                    cache: 'no-store',
+
+                    signal:
+                        chatStreamAbort.signal
+                }
+            );
+
+            if (!r.ok) {
+                throw new Error(
+                    'stream ' + r.status
+                );
+            }
+
+            const reader =
+                r.body.getReader();
+
+            const decoder =
+                new TextDecoder();
+
+            let buffer = '';
+
+            while (
+                !chatStreamAbort.signal.aborted
+            ) {
+
+                const {
+                    value,
+                    done
+                } = await reader.read();
+
+                if (done) break;
+
+                buffer += decoder.decode(
+                    value,
+                    {
+                        stream: true
+                    }
+                );
+
+                const events =
+                    buffer.split('\n\n');
+
+                buffer =
+                    events.pop() || '';
+
+                for (
+                    const raw of events
+                ) {
+
+                    const type =
+                        (
+                            raw.match(
+                                /^event:\s*(.+)$/m
+                            ) || []
+                        )[1] || 'message';
+
+                    if (
+                        type !== 'message'
+                    ) {
+                        continue;
+                    }
+
+                    const line =
+                        raw
+                            .split('\n')
+                            .find(
+                                x =>
+                                    x.startsWith(
+                                        'data:'
+                                    )
+                            );
+
+                    if (!line) continue;
+
+                    try {
+
+                        const message =
+                            JSON.parse(
+                                line
+                                    .slice(5)
+                                    .trim()
+                            );
+
+                        appendSellerMessage(
+                            message
+                        );
+
+                    } catch (_) {}
+                }
+            }
+
+        } catch (e) {
+
+            if (
+                chatStreamAbort.signal
+                    .aborted
+            ) {
+                break;
+            }
+
+            await new Promise(
+                resolve =>
+                    setTimeout(
+                        resolve,
+                        1500
+                    )
+            );
+        }
+    }
+}
+
+
+async function sendChat(e) {
+
+    e.preventDefault();
+
+    const input =
+        document.getElementById(
+            'chatInput'
+        );
+
+    const text =
+        input?.value.trim();
+
+    if (!text) return;
+
+    const token =
+        localStorage.getItem(
+            'token'
+        );
+
+    input.disabled = true;
+
+    try {
+
+        const r = await fetch(
+            '/api/messages',
+            {
+                method: 'POST',
+
+                headers: {
+                    'Content-Type':
+                        'application/json',
+
+                    Authorization:
+                        `Bearer ${token}`
+                },
+
+                body: JSON.stringify({
+                    userId:
+                        currentOtherUser,
+
+                    productId:
+                        currentChatProduct,
+
+                    noiDung:
+                        text
+                })
+            }
+        );
+
+        const d = await r.json();
+
+        if (!r.ok) {
+            throw new Error(
+                d.message ||
+                'Không gửi được tin nhắn.'
+            );
+        }
+
+        input.value = '';
+ 
+        appendSellerMessage(d);
+
+    } catch (e) {
+
+        alert(e.message);
+
+    } finally {
+
+        input.disabled = false;
+        input.focus();
+
+    }
 }
 async function loadChat(){
  const token=localStorage.getItem('token');const body=document.getElementById('chatBody');if(!body)return;

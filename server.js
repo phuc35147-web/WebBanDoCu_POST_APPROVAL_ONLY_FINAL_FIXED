@@ -194,6 +194,7 @@ app.get(
    CHAT GIỮA NGƯỜI MUA / NGƯỜI BÁN
 ========================= */
 app.get('/api/messages/conversations', auth.verifyTokenMiddleware, message.conversations);
+app.get('/api/messages/stream', auth.verifyTokenMiddleware, message.stream);
 app.get('/api/messages', auth.verifyTokenMiddleware, message.conversation);
 app.post('/api/messages', auth.verifyTokenMiddleware, message.send);
 app.patch('/api/messages/read', auth.verifyTokenMiddleware, message.read);
