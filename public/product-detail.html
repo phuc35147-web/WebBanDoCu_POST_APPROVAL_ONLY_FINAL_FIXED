@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Chi tiết tin đăng - Chợ Đồ Cũ</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<header class="main-header" style="min-height:auto;background-position:center;height:auto;">
+  <div class="container d-flex justify-content-between align-items-center py-3">
+    <a href="/" class="brand-logo text-decoration-none text-white fw-bold d-flex align-items-center gap-2"><i class="bi bi-recycle"></i> CHỢ ĐỒ CŨ</a>
+    <a href="/" class="btn btn-warning fw-bold rounded-pill px-4">← Về trang chủ</a>
+  </div>
+</header>
+
+<main class="container py-4 product-detail-page">
+  <div id="productDetail"><div class="text-center text-muted py-5">Đang tải tin đăng...</div></div>
+  <section id="similarSection" class="similar-section d-none">
+    <div class="d-flex justify-content-between align-items-center mb-3"><div><span class="section-kicker">GỢI Ý</span><h2 class="fw-bold m-0">Tin đăng tương tự</h2></div></div>
+    <div class="row g-3" id="similarProducts"></div>
+  </section>
+</main>
+
+<script>
+let currentProduct=null;
+let currentOtherUser=null;
+let currentChatProduct=null;
+
+function esc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));}
+function money(v){return Number(v||0).toLocaleString('vi-VN')+' đ';}
+function date(v){const d=new Date(v);return Number.isNaN(d.getTime())?'':d.toLocaleDateString('vi-VN');}
+function productCard(p){return `<div class="col-6 col-md-3"><a href="/product-detail.html?id=${encodeURIComponent(p.MaSanPham)}" class="text-decoration-none text-dark"><div class="card product-card h-100"><img class="product-img" src="${esc(p.HinhAnh||'/uploads/default.jpg')}" onerror="this.src='/uploads/default.jpg'"><div class="card-body"><span class="badge bg-primary-subtle text-primary mb-2">${esc(p.TenDanhMuc||'Đồ cũ')}</span><h6 class="fw-bold text-truncate">${esc(p.TenSanPham)}</h6><div class="text-danger fw-bold">${money(p.GiaBan)}</div><small class="text-muted"><i class="bi bi-person"></i> ${esc(p.TenNguoiBan||'Người bán')}</small></div></div></a></div>`;}
+
+async function loadProduct(){
+ const id=new URLSearchParams(location.search).get('id');
+ const box=document.getElementById('productDetail');
+ if(!id){box.innerHTML='<div class="alert alert-warning">Không xác định được tin đăng.</div>';return;}
+ try{
+  const r=await fetch('/api/products/'+encodeURIComponent(id));const p=await r.json();if(!r.ok)throw new Error(p.message||'Không tìm thấy tin đăng.');
+  currentProduct=p; currentOtherUser=p.MaNguoiBan; currentChatProduct=p.MaSanPham; document.title=p.TenSanPham+' - Chợ Đồ Cũ';
+  const imgs=(Array.isArray(p.HinhAnhs)&&p.HinhAnhs.length?p.HinhAnhs:[p.HinhAnh||'/uploads/default.jpg']);
+  box.innerHTML=`
+  <div class="product-detail-shell p-3 p-md-4">
+   <div class="row g-4">
+    <div class="col-lg-6"><div class="detail-gallery"><img id="mainProductImage" class="detail-main-image" src="${esc(imgs[0])}" onerror="this.src='/uploads/default.jpg'" alt="${esc(p.TenSanPham)}"><div class="detail-thumbs">${imgs.map((im,i)=>`<img class="detail-thumb ${i===0?'active':''}" src="${esc(im)}" onclick="changeImage(this,'${esc(im)}')" onerror="this.src='/uploads/default.jpg'">`).join('')}</div></div></div>
+    <div class="col-lg-6"><div class="detail-info">
+      <span class="detail-category">${esc(p.TenDanhMuc||'Đồ cũ')}</span><h1 class="detail-title">${esc(p.TenSanPham)}</h1><div class="detail-price">${money(p.GiaBan)}</div>
+      <div class="detail-meta-grid"><div class="detail-meta"><small>Tình trạng</small><strong>${esc(p.TinhTrang||'Đang cập nhật')}</strong></div><div class="detail-meta"><small>Đăng ngày</small><strong>${date(p.NgayDang)||'Đang cập nhật'}</strong></div><div class="detail-meta"><small>Lượt xem</small><strong>${Number(p.LuotXem||0)}</strong></div><div class="detail-meta"><small>Khu vực</small><strong>${esc(p.DiaChiXemHang||'Đang cập nhật')}</strong></div></div>
+      <div class="seller-box"><div class="d-flex align-items-center gap-3"><div class="seller-avatar">${esc((p.TenNguoiBan||'N').trim().charAt(0).toUpperCase())}</div><div><div class="fw-bold fs-5">${esc(p.TenNguoiBan||'Người bán')}</div><div class="text-muted small">Thành viên đăng tin trên Chợ Đồ Cũ</div></div></div><div class="small text-muted mt-3"><i class="bi bi-geo-alt me-1"></i>${esc(p.DiaChiXemHang||'Chưa cập nhật')} · <i class="bi bi-telephone me-1"></i>${esc(p.SdtNguoiBan||'Liên hệ qua tin nhắn')}</div></div>
+      <div class="detail-action-row"><button class="detail-chat-btn" onclick="openSellerChat()"><i class="bi bi-chat-dots me-2"></i>Chat với người bán</button><button class="detail-save-btn" onclick="toggleSave()"><i class="bi bi-heart me-2"></i>Lưu tin</button></div>
+    </div></div>
+    <div class="col-12"><div class="detail-description"><h3 class="fw-bold">Mô tả sản phẩm</h3><p class="mb-0" style="white-space:pre-line">${esc(p.MoTa||'Người bán chưa thêm mô tả.')}</p></div></div>
+   </div>
+  </div>`;
+  loadSimilar(p.MaDanhMuc,p.MaSanPham);
+ }catch(e){box.innerHTML=`<div class="alert alert-danger">${esc(e.message)}</div>`;}
+}
+function changeImage(el,src){document.getElementById('mainProductImage').src=src;document.querySelectorAll('.detail-thumb').forEach(x=>x.classList.remove('active'));el.classList.add('active');}
+async function loadSimilar(cat,id){try{const r=await fetch('/api/products?maDanhMuc='+encodeURIComponent(cat));const a=await r.json();const items=(Array.isArray(a)?a:[]).filter(x=>Number(x.MaSanPham)!==Number(id)).slice(0,5);if(!items.length)return;document.getElementById('similarProducts').innerHTML=items.map(productCard).join('');document.getElementById('similarSection').classList.remove('d-none');}catch(e){}}
+async function toggleSave(){const token=localStorage.getItem('token');if(!token){location.href='/auth.html?mode=login';return;}alert('Tin đã được ghi nhận. Chức năng đồng bộ danh sách tin lưu đang được hoàn thiện.');}
+
+function closeChat(){document.querySelector('.seller-chat-panel')?.remove();}
+async function openSellerChat(){
+ const token=localStorage.getItem('token');
+ if(!token){location.href='/auth.html?mode=login';return;}
+ if(Number(currentOtherUser)===Number(JSON.parse(localStorage.getItem('user')||'{}').maNguoiDung||JSON.parse(localStorage.getItem('user')||'{}').MaNguoiDung)){alert('Bạn không thể chat với chính mình.');return;}
+ const old=document.querySelector('.seller-chat-panel');if(old)old.remove();
+ const panel=document.createElement('div');panel.className='seller-chat-panel';panel.innerHTML=`<div class="seller-chat-header"><div><div class="fw-bold">Chat với ${esc(currentProduct.TenNguoiBan||'người bán')}</div><small>${esc(currentProduct.TenSanPham)}</small></div><button class="btn btn-sm text-white" onclick="closeChat()"><i class="bi bi-x-lg"></i></button></div><div id="chatBody" class="seller-chat-body"><div class="chat-empty">Đang tải cuộc trò chuyện...</div></div><form class="seller-chat-compose" onsubmit="sendChat(event)"><input id="chatInput" maxlength="2000" placeholder="Nhập tin nhắn..." autocomplete="off"><button><i class="bi bi-send"></i></button></form>`;
+ document.body.appendChild(panel);await loadChat();document.getElementById('chatInput')?.focus();
+}
+async function loadChat(){
+ const token=localStorage.getItem('token');const body=document.getElementById('chatBody');if(!body)return;
+ try{const r=await fetch(`/api/messages?userId=${encodeURIComponent(currentOtherUser)}&productId=${encodeURIComponent(currentChatProduct)}`,{headers:{Authorization:`Bearer ${token}`}});const a=await r.json();if(!r.ok)throw new Error(a.message||'Không tải được tin nhắn.');
+  body.innerHTML=a.length?a.map(m=>{const me=Number(m.MaNguoiGui)===Number(JSON.parse(localStorage.getItem('user')||'{}').maNguoiDung||JSON.parse(localStorage.getItem('user')||'{}').MaNguoiDung);return `<div class="chat-bubble ${me?'me':'them'}">${esc(m.NoiDung)}<span class="chat-time">${new Date(m.NgayGui).toLocaleString('vi-VN')}</span></div>`}).join(''):'<div class="chat-empty"><i class="bi bi-chat-dots fs-1 d-block mb-2"></i>Hãy bắt đầu cuộc trò chuyện về tin đăng này.</div>';
+  body.scrollTop=body.scrollHeight;
+  fetch('/api/messages/read',{method:'PATCH',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({userId:currentOtherUser,productId:currentChatProduct})});
+ }catch(e){body.innerHTML=`<div class="alert alert-danger">${esc(e.message)}</div>`;}
+}
+async function sendChat(e){e.preventDefault();const input=document.getElementById('chatInput');const text=input?.value.trim();if(!text)return;const token=localStorage.getItem('token');input.disabled=true;try{const r=await fetch('/api/messages',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({userId:currentOtherUser,productId:currentChatProduct,noiDung:text})});const d=await r.json();if(!r.ok)throw new Error(d.message||'Không gửi được tin nhắn.');input.value='';await loadChat();}catch(e){alert(e.message);}finally{input.disabled=false;input.focus();}}
+loadProduct();
+</script>
+</body>
+</html>

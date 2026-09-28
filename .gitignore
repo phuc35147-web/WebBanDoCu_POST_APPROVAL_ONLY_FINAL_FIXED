@@ -1,0 +1,7 @@
+node_modules/
+.env
+npm-debug.log*
+uploads/*
+!uploads/1789292862629-134554614.jpg
+!uploads/1789292864980-923735277.jpg
+!uploads/default.jpg

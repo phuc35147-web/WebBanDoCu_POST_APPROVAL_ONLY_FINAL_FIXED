@@ -1,0 +1,10 @@
+const {poolPromise,sql}=require('./dbConfig');
+class AdminDAL{
+ async findByEmail(email){const p=await poolPromise;return (await p.request().input('email',sql.VarChar(255),email.toLowerCase()).query(`SELECT MaNguoiDung AdminUserId,Email,MatKhau PasswordHash,HoTen DisplayName,TrangThai IsActive FROM NguoiDung WHERE Email=@email AND VaiTro='admin'`)).recordset[0];}
+ async getHomepageContent(){const p=await poolPromise;return (await p.request().query('SELECT TOP 1 * FROM HomepageContent WHERE ContentId=1')).recordset[0]||null;}
+ async saveHomepageContent(d){const p=await poolPromise;await p.request().input('title',sql.NVarChar(255),d.heroTitle).input('sub',sql.NVarChar(255),d.heroSubtitle).input('desc',sql.NVarChar(1000),d.heroDescription).input('img',sql.VarChar(1000),d.heroImageUrl).query(`UPDATE HomepageContent SET HeroTitle=@title,HeroSubtitle=@sub,HeroDescription=@desc,HeroImageUrl=@img,UpdatedAt=SYSDATETIME() WHERE ContentId=1`);return this.getHomepageContent();}
+ async stats(){const p=await poolPromise;const r=await p.request().query(`SELECT (SELECT COUNT(*) FROM NguoiDung WHERE VaiTro<>'admin') Users,(SELECT COUNT(*) FROM SanPhamDoCu) Products,(SELECT COUNT(*) FROM SanPhamDoCu WHERE TrangThai=N'Đang bán') ActiveProducts,(SELECT COUNT(*) FROM DonHang) Orders,(SELECT COALESCE(SUM(TongThanhToan),0) FROM DonHang WHERE TrangThai=N'Đã giao') Revenue`);return r.recordset[0];}
+ async updateOrderStatus(id,status){const p=await poolPromise;await p.request().input('id',sql.Int,id).input('st',sql.NVarChar(40),status).query('UPDATE DonHang SET TrangThai=@st,NgayCapNhat=SYSDATETIME() WHERE MaDonHang=@id');}
+ async getOrders(){const p=await poolPromise;return (await p.request().query(`SELECT dh.*,nd.HoTen TenNguoiMua,ct.TenSanPham,ct.MaNguoiBan,nb.HoTen TenNguoiBan FROM DonHang dh JOIN NguoiDung nd ON nd.MaNguoiDung=dh.MaNguoiMua JOIN ChiTietDonHang ct ON ct.MaDonHang=dh.MaDonHang LEFT JOIN NguoiDung nb ON nb.MaNguoiDung=ct.MaNguoiBan ORDER BY dh.NgayDat DESC`)).recordset;}
+}
+module.exports=new AdminDAL();

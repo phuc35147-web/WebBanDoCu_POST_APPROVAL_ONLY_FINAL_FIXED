@@ -1,0 +1,18 @@
+const {poolPromise,sql}=require('./dbConfig');
+class OrderDAL{
+ async create(userId,d){const p=await poolPromise;const tx=new sql.Transaction(p);await tx.begin();try{
+  const req=tx.request().input('uid',sql.Int,userId).input('name',sql.NVarChar(150),d.hoTenNguoiNhan).input('phone',sql.VarChar(20),d.soDienThoaiNhan).input('address',sql.NVarChar(1000),d.diaChiNhan).input('ship',sql.Decimal(18,2),Number(d.phiVanChuyen||0)).input('pay',sql.VarChar(20),d.phuongThucThanhToan||'COD').input('note',sql.NVarChar(1000),d.ghiChu||null);
+  const order=(await req.query(`INSERT DonHang(MaNguoiMua,TongTienHang,PhiVanChuyen,HoTenNguoiNhan,SoDienThoaiNhan,DiaChiNhan,PhuongThucThanhToan,GhiChu) OUTPUT INSERTED.MaDonHang VALUES(@uid,0,@ship,@name,@phone,@address,@pay,@note)`)).recordset[0];
+  const prod=(await tx.request().input('pid',sql.Int,Number(d.maSanPham)).query(`SELECT * FROM SanPhamDoCu WITH(UPDLOCK,HOLDLOCK) WHERE MaSanPham=@pid AND TrangThai=N'Đang bán' AND SoLuong>0`)).recordset[0];
+  if(!prod) throw new Error('Sản phẩm không còn hàng hoặc đã được bán.');
+  if(prod.MaNguoiBan===userId) throw new Error('Bạn không thể mua sản phẩm của chính mình.');
+  const qty=Number(d.soLuong||1); if(qty!==1) throw new Error('Sản phẩm đồ cũ này chỉ bán từng món.');
+  await tx.request().input('oid',sql.Int,order.MaDonHang).input('pid',sql.Int,prod.MaSanPham).input('seller',sql.Int,prod.MaNguoiBan).input('name',sql.NVarChar(255),prod.TenSanPham).input('price',sql.Decimal(18,2),prod.GiaBan).query(`INSERT ChiTietDonHang(MaDonHang,MaSanPham,MaNguoiBan,TenSanPham,DonGia,SoLuong) VALUES(@oid,@pid,@seller,@name,@price,1); UPDATE DonHang SET TongTienHang=@price,NgayCapNhat=SYSDATETIME() WHERE MaDonHang=@oid`);
+  await tx.request().input('pid',sql.Int,prod.MaSanPham).query(`UPDATE SanPhamDoCu SET SoLuong=0,TrangThai=N'Đã bán',NgayCapNhat=SYSDATETIME() WHERE MaSanPham=@pid AND SoLuong>0`);
+  await tx.request().input('seller',sql.Int,prod.MaNguoiBan).input('title',sql.NVarChar(255),'Có đơn hàng mới').input('body',sql.NVarChar(1000),`Sản phẩm ${prod.TenSanPham} vừa có người đặt.`).query('INSERT ThongBao(MaNguoiDung,TieuDe,NoiDung) VALUES(@seller,@title,@body)');
+  await tx.commit();return {maDonHang:order.MaDonHang,tongTien:Number(prod.GiaBan)+Number(d.phiVanChuyen||0)};
+ }catch(e){try{await tx.rollback();}catch{}throw e;}}
+ async getById(userId,id){const p=await poolPromise;return (await p.request().input('uid',sql.Int,userId).input('id',sql.Int,id).query(`SELECT dh.*,ct.*,nd.HoTen TenNguoiBan FROM DonHang dh JOIN ChiTietDonHang ct ON ct.MaDonHang=dh.MaDonHang LEFT JOIN NguoiDung nd ON nd.MaNguoiDung=ct.MaNguoiBan WHERE dh.MaNguoiMua=@uid AND dh.MaDonHang=@id`)).recordset[0]||null;}
+ async cancel(userId,id){const p=await poolPromise;const tx=new sql.Transaction(p);await tx.begin();try{const o=(await tx.request().input('uid',sql.Int,userId).input('id',sql.Int,id).query(`SELECT dh.TrangThai,ct.MaSanPham FROM DonHang dh JOIN ChiTietDonHang ct ON ct.MaDonHang=dh.MaDonHang WHERE dh.MaDonHang=@id AND dh.MaNguoiMua=@uid`)).recordset[0];if(!o)throw new Error('Không tìm thấy đơn hàng.');if(o.TrangThai!=='Chờ xác nhận')throw new Error('Đơn hàng không thể hủy ở trạng thái hiện tại.');if(o.MaSanPham)await tx.request().input('pid',sql.Int,o.MaSanPham).query(`UPDATE SanPhamDoCu SET SoLuong=1,TrangThai=N'Đang bán' WHERE MaSanPham=@pid AND TrangThai=N'Đã bán'`);await tx.request().input('id',sql.Int,id).query(`UPDATE DonHang SET TrangThai=N'Đã hủy',NgayCapNhat=SYSDATETIME() WHERE MaDonHang=@id`);await tx.commit();}catch(e){try{await tx.rollback();}catch{}throw e;}}
+}
+module.exports=new OrderDAL();

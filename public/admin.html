@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Quản trị - Chợ Đồ Cũ</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <header class="main-header"><div class="container d-flex justify-content-between align-items-center">
+        <a href="/" class="brand-logo">CHỢ ĐỒ CŨ - QUẢN TRỊ</a>
+        <button class="btn btn-outline-light" onclick="logout()">Đăng xuất</button>
+    </div></header>
+    <main class="container py-4">
+        <div id="message" class="alert d-none"></div>
+        <section class="card shadow-sm mb-4">
+            <div class="card-body">
+                <h2 class="h4">Tùy chỉnh trang chủ</h2>
+                <form id="homepageForm" class="row g-3">
+                    <div class="col-md-6"><label class="form-label">Tiêu đề hero</label><input id="heroTitle" name="heroTitle" class="form-control"></div>
+                    <div class="col-md-6"><label class="form-label">Tiêu đề phụ</label><input id="heroSubtitle" name="heroSubtitle" class="form-control"></div>
+                    <div class="col-12"><label class="form-label">Mô tả</label><textarea id="heroDescription" name="heroDescription" class="form-control" rows="2"></textarea></div>
+                    <div class="col-md-8"><label class="form-label">URL ảnh/banner</label><input id="heroImageUrl" name="heroImageUrl" type="url" class="form-control" placeholder="https://..."></div>
+                    <div class="col-md-4"><label class="form-label">Hoặc tải ảnh lên</label><input id="heroImage" name="image" type="file" accept="image/*" class="form-control"></div>
+                    <div class="col-12"><button class="btn btn-primary" type="submit">Lưu nội dung trang chủ</button></div>
+                </form>
+            </div>
+        </section>
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2>Quản lý tin đăng</h2><a href="/" class="btn btn-primary">Về trang bán hàng</a>
+        </div>
+        <div class="table-responsive bg-white rounded shadow-sm">
+            <table class="table table-hover mb-0">
+                <thead><tr><th>Sản phẩm</th><th>Người bán</th><th>Giá</th><th>Ngày đăng</th><th>Trạng thái</th></tr></thead>
+                <tbody id="productTable"></tbody>
+            </table>
+        </div>
+    </main>
+    <script>
+        const token = localStorage.getItem('adminToken');
+        const user = JSON.parse(localStorage.getItem('adminUser') || '{}');
+        if (!token || user.tokenType !== 'admin') location.href = '/admin-login.html';
+        const authHeaders = () => ({ Authorization: 'Bearer ' + token });
+        const money = value => Number(value || 0).toLocaleString('vi-VN') + ' đ';
+        const showMessage = (text, type = 'danger') => {
+            const message = document.getElementById('message');
+            message.className = 'alert alert-' + type;
+            message.textContent = text;
+        };
+        async function loadHomepageContent() {
+            const res = await fetch('/api/homepage-content');
+            const data = await res.json();
+            document.getElementById('heroTitle').value = data.HeroTitle || '';
+            document.getElementById('heroSubtitle').value = data.HeroSubtitle || '';
+            document.getElementById('heroDescription').value = data.HeroDescription || '';
+            document.getElementById('heroImageUrl').value = data.HeroImageUrl && !data.HeroImageUrl.startsWith('/uploads/') ? data.HeroImageUrl : '';
+        }
+        async function saveHomepageContent(event) {
+            event.preventDefault();
+            const form = new FormData(document.getElementById('homepageForm'));
+            const res = await fetch('/api/admin/homepage-content', { method: 'PUT', headers: authHeaders(), body: form });
+            const data = await res.json();
+            if (!res.ok) return showMessage(data.message || 'Không thể lưu nội dung.');
+            showMessage(data.message, 'success');
+        }
+        async function loadProducts() {
+            const res = await fetch('/api/admin/products', { headers: authHeaders() });
+            if (res.status === 401 || res.status === 403) return location.href = '/admin-login.html';
+            const products = await res.json();
+            document.getElementById('productTable').innerHTML = products.map(p => `
+                <tr><td><b>${p.TenSanPham || ''}</b><br><small>${p.TenDanhMuc || ''}</small></td>
+                <td>${p.TenNguoiBan || ''}<br><small>${p.EmailNguoiBan || ''}</small></td>
+                <td>${money(p.GiaBan)}</td><td>${p.NgayDang ? new Date(p.NgayDang).toLocaleDateString('vi-VN') : ''}</td>
+                <td><select class="form-select form-select-sm" onchange="changeStatus(${p.MaSanPham}, this.value)">
+                    ${['Chờ duyệt', 'Đang bán', 'Từ chối', 'Đã bán', 'Ẩn'].map(s => `<option ${s === p.TrangThai ? 'selected' : ''}>${s}</option>`).join('')}
+                </select></td></tr>`).join('');
+        }
+        async function changeStatus(id, trangThai) {
+            const res = await fetch('/api/admin/products/' + id + '/status', {
+                method: 'PATCH', headers: { ...authHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify({ trangThai })
+            });
+            if (!res.ok) showMessage((await res.json()).message || 'Không thể cập nhật trạng thái.');
+        }
+        function logout() { localStorage.removeItem('adminToken'); localStorage.removeItem('adminUser'); location.href = '/admin-login.html'; }
+        document.getElementById('homepageForm').addEventListener('submit', saveHomepageContent);
+        Promise.all([loadHomepageContent(), loadProducts()]).catch(error => showMessage(error.message || 'Không thể tải dữ liệu quản trị.'));
+    </script>
+</body>
+</html>
