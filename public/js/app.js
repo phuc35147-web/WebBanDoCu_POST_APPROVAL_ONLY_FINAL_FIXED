@@ -543,6 +543,51 @@ async function loadProvinces(selectId) {
     }
 }
 
+async function loadSearchLocations() {
+    const select = document.getElementById('searchLocation');
+    if (!select) return;
+
+    try {
+        const response = await fetch('https://provinces.open-api.vn/api/v2/p/');
+        if (!response.ok) throw new Error('Không tải được danh sách tỉnh/thành phố.');
+
+        const provinces = await response.json();
+        if (!Array.isArray(provinces)) throw new Error('Dữ liệu tỉnh/thành phố không hợp lệ.');
+
+        const getPriority = province => {
+            const name = province.name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+            if (name.includes('ho chi minh')) return 0;
+            if (name.includes('ha noi')) return 1;
+            return 2;
+        };
+
+        const sortedProvinces = [...provinces].sort((a, b) =>
+            getPriority(a) - getPriority(b) ||
+            a.name.localeCompare(b.name, 'vi')
+        );
+
+        select.replaceChildren(new Option('📍 Chọn khu vực', ''));
+        sortedProvinces.forEach(province => {
+            const priority = getPriority(province);
+            const locationValue = priority === 0
+                ? 'Hồ Chí Minh'
+                : priority === 1
+                    ? 'Hà Nội'
+                    : province.name;
+            const option = new Option(province.name, locationValue);
+            option.className = 'text-dark';
+            select.add(option);
+        });
+    } catch (error) {
+        console.error('Lỗi tải khu vực tìm kiếm:', error);
+        select.replaceChildren(
+            new Option('📍 Chọn khu vực', ''),
+            new Option('Không tải được danh sách khu vực', '', true, true)
+        );
+        select.options[1].disabled = true;
+    }
+}
+
 async function loadWards(provinceCode, wardSelectId) {
     if (!provinceCode) return;
     try {
@@ -578,7 +623,8 @@ async function fetchProducts() {
     if (!dealList && !allList) return;
     try {
         const keyword = document.getElementById('searchKeyword')?.value.trim() || '';
-        const response = await fetch(`/api/products?${new URLSearchParams({ keyword })}`);
+        const location = document.getElementById('searchLocation')?.value || '';
+        const response = await fetch(`/api/products?${new URLSearchParams({ keyword, location })}`);
         if (!response.ok) throw new Error('Không thể tải danh sách sản phẩm.');
         const products = await response.json();
         const renderProducts = items => items.length ? items.map(product => `
@@ -654,6 +700,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 fetchProducts();
             }
         });
+    }
+
+    const searchLocation = document.getElementById('searchLocation');
+    if (searchLocation) {
+        loadSearchLocations();
+        searchLocation.addEventListener('change', fetchProducts);
     }
 
     fetchProducts();

@@ -296,6 +296,11 @@ img {
     font-weight: 600;
 }
 
+.search-bar-wrapper .form-select option {
+    color: #111827 !important;
+    background-color: #ffffff !important;
+}
+
 .search-bar-wrapper button {
     min-height: 58px;
     background: #facc15 !important;
