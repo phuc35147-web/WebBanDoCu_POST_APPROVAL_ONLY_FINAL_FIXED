@@ -1381,6 +1381,9 @@ body {
 .seller-chat-header{background:#0f172a;color:#fff;padding:15px 18px;display:flex;align-items:center;justify-content:space-between;}
 .seller-chat-body{flex:1;overflow:auto;padding:16px;background:#f8fafc;}
 .chat-empty{text-align:center;color:#64748b;padding:70px 20px;}
+.chat-day-separator{display:flex;align-items:center;justify-content:center;margin:14px 0 18px;color:#64748b;font-size:.7rem;}
+.chat-day-separator::before,.chat-day-separator::after{content:"";flex:1;height:1px;margin:0 10px;background:#dbe3ef;}
+.chat-day-separator span{padding:5px 10px;border-radius:999px;background:#e8edf5;white-space:nowrap;}
 .chat-bubble{max-width:78%;padding:10px 13px;border-radius:15px;margin-bottom:9px;font-size:.93rem;line-height:1.4;}
 .chat-bubble.me{margin-left:auto;background:#2563eb;color:#fff;border-bottom-right-radius:4px;}
 .chat-bubble.them{background:#fff;color:#1e293b;border:1px solid #e2e8f0;border-bottom-left-radius:4px;}

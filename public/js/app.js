@@ -320,17 +320,36 @@ function preparePostForm(editing) {
     const submit = document.getElementById('postSubmitButton');
     if (title) title.innerHTML = '<i class="bi bi-pencil-square me-2"></i>Chỉnh sửa tin đăng';
     if (submit) submit.innerHTML = '<i class="bi bi-save me-2"></i>Lưu thay đổi';
-    document.getElementById('postProductName').value = editing.TenSanPham || '';
-    document.getElementById('postCategory').value = editing.MaDanhMuc || '';
-    document.getElementById('postCondition').value = editing.TinhTrang || '';
-    document.getElementById('postPrice').value = editing.GiaBan || '';
-    document.getElementById('postQuantity').value = editing.SoLuong || 1;
-    document.getElementById('postDescription').value = editing.MoTa || '';
-    document.getElementById('postAddress').value = editing.DiaChiXemHang || '';
-    document.getElementById('postConfirm').checked = true;
-    document.getElementById('postImage').required = false;
-    document.getElementById('postProvince').required = false;
-    document.getElementById('postWard').required = false;
+
+    const productName = document.getElementById('postProductName');
+    const category = document.getElementById('postCategory');
+    const condition = document.getElementById('postCondition');
+    const price = document.getElementById('postPrice');
+    const quantity = document.getElementById('postQuantity');
+    const description = document.getElementById('postDescription');
+    const address = document.getElementById('postAddress');
+    const confirmBox = document.getElementById('postConfirm');
+    const imageInput = document.getElementById('postImage');
+    const province = document.getElementById('postProvince');
+    const ward = document.getElementById('postWard');
+
+    if (productName) productName.value = editing.TenSanPham || '';
+    if (category) category.value = editing.MaDanhMuc || '';
+    if (condition) condition.value = editing.TinhTrang || '';
+    if (price) price.value = editing.GiaBan || '';
+    if (quantity) quantity.value = Number(editing.SoLuong || 1);
+    if (description) description.value = editing.MoTa || '';
+    if (address) address.value = editing.DiaChiXemHang || '';
+    if (confirmBox) confirmBox.checked = true;
+    if (imageInput) imageInput.required = false;
+    if (province) {
+        province.required = false;
+        province.disabled = true;
+    }
+    if (ward) {
+        ward.required = false;
+        ward.disabled = true;
+    }
 }
 
 function startPostWithCategory(categoryId) {
@@ -576,8 +595,8 @@ async function fetchProducts() {
                     </div>
                 </a>
             </div>`).join('') : '<div class="col-12 text-center text-muted py-5">Chưa có sản phẩm nào phù hợp.</div>';
-        if (dealList) dealList.innerHTML = renderProducts(products.slice(0, 8));
-        if (allList) allList.innerHTML = renderProducts(products.slice(8));
+        if (dealList) dealList.innerHTML = '';
+        if (allList) allList.innerHTML = renderProducts(products);
     } catch (error) {
         console.error(error);
         if (dealList) dealList.innerHTML = '<div class="col-12 text-center text-danger py-5">Không thể tải danh sách sản phẩm.</div>';

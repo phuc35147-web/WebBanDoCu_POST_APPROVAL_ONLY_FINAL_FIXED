@@ -1091,11 +1091,22 @@ async function deleteListing(id) {
 
 async function editListing(id) {
     try {
-        const r=await fetch(`/api/products/${id}`); const p=await r.json();
-        if(!r.ok) throw new Error(p.message||'Không tải được tin.');
+        const token = localStorage.getItem('token');
+        if (!token) {
+            window.location.href = '/auth.html?mode=login';
+            return;
+        }
+
+        const r = await fetch(`/api/products/${id}`, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        const p = await r.json();
+        if (!r.ok) throw new Error(p.message || 'Không tải được tin.');
         localStorage.setItem('editingProduct', JSON.stringify(p));
-        window.location.href='/?editProduct=1';
-    } catch(e){alert(e.message);}
+        window.location.href = '/?editProduct=1';
+    } catch (e) {
+        alert(e.message);
+    }
 }
 
 /* =========================================================

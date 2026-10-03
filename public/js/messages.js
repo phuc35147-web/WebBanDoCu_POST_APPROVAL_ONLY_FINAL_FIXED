@@ -87,38 +87,171 @@
     }
 
 
-    function formatTime(value) {
+    function parseMessageDate(value) {
 
         if (!value) {
+            return null;
+        }
+
+        const raw = String(value).trim();
+
+        if (!raw) {
+            return null;
+        }
+
+        const normalized = raw.includes(' ') && raw.includes('-')
+            ? raw.replace(' ', 'T')
+            : raw;
+        const parsed = new Date(normalized);
+
+        return Number.isNaN(parsed.getTime()) ? null : parsed;
+
+    }
+
+
+    function formatTime(value) {
+
+        const date = parseMessageDate(value);
+
+        if (!date) {
             return '';
         }
 
+        return date.toLocaleTimeString('vi-VN', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+            timeZone: 'Asia/Ho_Chi_Minh'
+        });
 
-        const date =
-            new Date(value);
-
-
-        if (
-            Number.isNaN(
-                date.getTime()
-            )
-        ) {
-
-            return '';
-
-        }
+    }
 
 
-        return date.toLocaleString(
-            'vi-VN',
-            {
+    function messageDayKey(date) {
+
+        return new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'Asia/Ho_Chi_Minh',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+        }).format(date);
+
+    }
+
+
+    function formatDayLabel(value) {
+
+        const date = parseMessageDate(value);
+
+        return date
+            ? date.toLocaleDateString('vi-VN', {
+                weekday: 'long',
                 day: '2-digit',
                 month: '2-digit',
                 year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            }
-        );
+                timeZone: 'Asia/Ho_Chi_Minh'
+            })
+            : '';
+
+    }
+
+
+    function renderDaySeparator(value) {
+
+        const date = parseMessageDate(value);
+
+        if (!date) {
+            return '';
+        }
+
+        return `
+            <div class="message-day-separator" data-day-key="${messageDayKey(date)}">
+                <span>${esc(formatDayLabel(value))}</span>
+            </div>
+        `;
+
+    }
+
+
+    function renderMessages(messages) {
+
+        let previousDay = '';
+
+        return messages.map(message => {
+            const date = parseMessageDate(message.NgayGui);
+            const day = date ? messageDayKey(date) : '';
+            const separator = day && day !== previousDay
+                ? renderDaySeparator(message.NgayGui)
+                : '';
+
+            previousDay = day || previousDay;
+
+            return `${separator}${renderMessage(message)}`;
+        }).join('');
+
+    }
+
+
+    function renderProductContextCard() {
+
+        if (!current || !current.productId) {
+            return '';
+        }
+
+
+        const image =
+            current.productImage ||
+            '/uploads/default.jpg';
+
+        const price =
+            current.productPrice
+                ? Number(current.productPrice).toLocaleString('vi-VN') + ' đ'
+                : '';
+
+
+        return `
+
+            <div class="chat-product-context">
+
+                <a
+                    href="/product-detail.html?id=${encodeURIComponent(current.productId)}"
+                    class="chat-product-context-link"
+                    title="Xem tin đăng"
+                >
+
+                    <img
+                        src="${esc(image)}"
+                        alt="${esc(current.product || 'Sản phẩm')}"
+                        onerror="this.src='/uploads/default.jpg'"
+                    >
+
+                    <div class="chat-product-context-text">
+
+                        <div class="chat-product-context-label">
+                            Sản phẩm đang trao đổi
+                        </div>
+
+                        <div class="chat-product-context-name">
+                            ${esc(current.product || 'Sản phẩm')}
+                        </div>
+
+                        ${price
+                            ? `
+                                <div class="chat-product-context-price">
+                                    ${price}
+                                </div>
+                              `
+                            : ''}
+
+                    </div>
+
+                    <i class="bi bi-chevron-right"></i>
+
+                </a>
+
+            </div>
+
+        `;
 
     }
 
@@ -150,9 +283,7 @@
 
 
         const sameDay =
-            date.getDate() === now.getDate() &&
-            date.getMonth() === now.getMonth() &&
-            date.getFullYear() === now.getFullYear();
+            messageDayKey(date) === messageDayKey(now);
 
 
         if (sameDay) {
@@ -161,7 +292,8 @@
                 'vi-VN',
                 {
                     hour: '2-digit',
-                    minute: '2-digit'
+                    minute: '2-digit',
+                    timeZone: 'Asia/Ho_Chi_Minh'
                 }
             );
 
@@ -172,7 +304,9 @@
             'vi-VN',
             {
                 day: '2-digit',
-                month: '2-digit'
+                month: '2-digit',
+                year: 'numeric',
+                timeZone: 'Asia/Ho_Chi_Minh'
             }
         );
 
@@ -660,7 +794,12 @@
                                 'Người dùng',
 
                             conversation?.TenSanPham ||
-                                ''
+                                '',
+
+                            conversation?.HinhAnh ||
+                                '',
+
+                            conversation?.GiaBan || 0
 
                         );
 
@@ -955,6 +1094,8 @@
         const isMe =
             senderId === Number(me);
 
+        // Tin nhắn của người gửi luôn nằm bên phải, người nhận bên trái.
+
 
         const senderName =
             isMe
@@ -1189,9 +1330,15 @@
             ?.remove();
 
 
+        const date = parseMessageDate(message.NgayGui);
+        const day = date ? messageDayKey(date) : '';
+        const hasDaySeparator = day && body.querySelector(
+            `.message-day-separator[data-day-key="${day}"]`
+        );
+
         body.insertAdjacentHTML(
             'beforeend',
-            renderMessage(message)
+            `${day && !hasDaySeparator ? renderDaySeparator(message.NgayGui) : ''}${renderMessage(message)}`
         );
 
 
@@ -1227,7 +1374,9 @@
         userId,
         productId,
         name,
-        product
+        product,
+        productImage = '',
+        productPrice = 0
     ) {
 
         current = {
@@ -1242,7 +1391,13 @@
                 name || 'Người dùng',
 
             product:
-                product || ''
+                product || '',
+
+            productImage:
+                productImage || '',
+
+            productPrice:
+                productPrice || 0
 
         };
 
@@ -1379,9 +1534,11 @@
                     );
 
 
+            const productCard = renderProductContextCard();
+
             if (!messages.length) {
 
-                body.innerHTML = `
+                body.innerHTML = `${productCard}
 
                     <div class="chat-empty">
 
@@ -1415,10 +1572,7 @@
 
             } else {
 
-                body.innerHTML =
-                    messages
-                        .map(renderMessage)
-                        .join('');
+                body.innerHTML = `${productCard}${renderMessages(messages)}`;
 
             }
 

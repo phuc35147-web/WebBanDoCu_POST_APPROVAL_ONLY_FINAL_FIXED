@@ -79,6 +79,8 @@ function getMyId() {
     return Number(
         u.maNguoiDung ||
         u.MaNguoiDung ||
+        u.id ||
+        u.userId ||
         0
     );
 }
@@ -279,6 +281,20 @@ function renderSellerMessage(m) {
             'Người bán'
         );
 
+    const rawDate = String(m.NgayGui || '').trim();
+    const normalizedDate = rawDate.includes(' ') && rawDate.includes('-')
+        ? rawDate.replace(' ', 'T')
+        : rawDate;
+    const messageDate = normalizedDate ? new Date(normalizedDate) : null;
+    const messageTime = !messageDate || Number.isNaN(messageDate.getTime())
+        ? ''
+        : messageDate.toLocaleTimeString('vi-VN', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+            timeZone: 'Asia/Ho_Chi_Minh'
+        });
+
     return `
         <div
             class="seller-chat-row ${me ? 'me' : 'them'}"
@@ -297,9 +313,7 @@ function renderSellerMessage(m) {
                     <div class="seller-chat-meta">
 
                         <span>
-                            ${new Date(
-                                m.NgayGui
-                            ).toLocaleString('vi-VN')}
+                            ${messageTime}
                         </span>
 
                         ${
@@ -322,6 +336,33 @@ function renderSellerMessage(m) {
 
         </div>
     `;
+}
+
+
+function sellerChatDayKey(value) {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Ho_Chi_Minh',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    }).formatToParts(date);
+    return `${parts.find(x => x.type === 'year')?.value}-${parts.find(x => x.type === 'month')?.value}-${parts.find(x => x.type === 'day')?.value}`;
+}
+
+
+function sellerChatDayLabel(value) {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime())
+        ? ''
+        : date.toLocaleDateString('vi-VN', {
+            weekday: 'long',
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            timeZone: 'Asia/Ho_Chi_Minh'
+        });
 }
 
 
@@ -365,9 +406,16 @@ async function loadChat() {
         }
 
         body.innerHTML = a.length
-            ? a.map(
-                renderSellerMessage
-            ).join('')
+            ? a.map((message, index) => {
+                const day = sellerChatDayKey(message.NgayGui);
+                const previousDay = index
+                    ? sellerChatDayKey(a[index - 1].NgayGui)
+                    : '';
+                const separator = day && day !== previousDay
+                    ? `<div class="chat-day-separator" data-day-key="${day}"><span>${esc(sellerChatDayLabel(message.NgayGui))}</span></div>`
+                    : '';
+                return `${separator}${renderSellerMessage(message)}`;
+            }).join('')
             : `
                 <div class="chat-empty">
                     <i class="bi bi-chat-dots fs-1 d-block mb-2"></i>
@@ -466,9 +514,17 @@ function appendSellerMessage(m) {
         empty.remove();
     }
 
+    const day = sellerChatDayKey(m.NgayGui);
+    const hasDaySeparator = day && body?.querySelector(
+        `.chat-day-separator[data-day-key="${day}"]`
+    );
+    const separator = day && !hasDaySeparator
+        ? `<div class="chat-day-separator" data-day-key="${day}"><span>${esc(sellerChatDayLabel(m.NgayGui))}</span></div>`
+        : '';
+
     body?.insertAdjacentHTML(
         'beforeend',
-        renderSellerMessage(m)
+        `${separator}${renderSellerMessage(m)}`
     );
 
     if (body) {
@@ -726,15 +782,6 @@ async function sendChat(e) {
 
     }
 }
-async function loadChat(){
- const token=localStorage.getItem('token');const body=document.getElementById('chatBody');if(!body)return;
- try{const r=await fetch(`/api/messages?userId=${encodeURIComponent(currentOtherUser)}&productId=${encodeURIComponent(currentChatProduct)}`,{headers:{Authorization:`Bearer ${token}`}});const a=await r.json();if(!r.ok)throw new Error(a.message||'Không tải được tin nhắn.');
-  body.innerHTML=a.length?a.map(m=>{const me=Number(m.MaNguoiGui)===Number(JSON.parse(localStorage.getItem('user')||'{}').maNguoiDung||JSON.parse(localStorage.getItem('user')||'{}').MaNguoiDung);return `<div class="chat-bubble ${me?'me':'them'}">${esc(m.NoiDung)}<span class="chat-time">${new Date(m.NgayGui).toLocaleString('vi-VN')}</span></div>`}).join(''):'<div class="chat-empty"><i class="bi bi-chat-dots fs-1 d-block mb-2"></i>Hãy bắt đầu cuộc trò chuyện về tin đăng này.</div>';
-  body.scrollTop=body.scrollHeight;
-  fetch('/api/messages/read',{method:'PATCH',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({userId:currentOtherUser,productId:currentChatProduct})});
- }catch(e){body.innerHTML=`<div class="alert alert-danger">${esc(e.message)}</div>`;}
-}
-async function sendChat(e){e.preventDefault();const input=document.getElementById('chatInput');const text=input?.value.trim();if(!text)return;const token=localStorage.getItem('token');input.disabled=true;try{const r=await fetch('/api/messages',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({userId:currentOtherUser,productId:currentChatProduct,noiDung:text})});const d=await r.json();if(!r.ok)throw new Error(d.message||'Không gửi được tin nhắn.');input.value='';await loadChat();}catch(e){alert(e.message);}finally{input.disabled=false;input.focus();}}
 loadProduct();
 </script>
 </body>

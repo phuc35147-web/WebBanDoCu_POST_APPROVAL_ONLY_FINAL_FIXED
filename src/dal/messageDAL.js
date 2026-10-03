@@ -70,7 +70,7 @@ class MessageDAL {
                     r.MaTinNhan,
                     r.MaSanPham,
                     r.NoiDung,
-                    r.NgayGui,
+                    TODATETIMEOFFSET(r.NgayGui, '+07:00') AS NgayGui,
                     r.DaDoc,
 
                     r.MaNguoiGui,
@@ -140,7 +140,7 @@ class MessageDAL {
 
                     tm.NoiDung,
                     tm.DaDoc,
-                    tm.NgayGui,
+                    TODATETIMEOFFSET(tm.NgayGui, '+07:00') AS NgayGui,
 
                     sender.HoTen AS TenNguoiGui,
                     sender.AnhDaiDien AS AnhNguoiGui,
@@ -167,18 +167,20 @@ class MessageDAL {
 
                 WHERE
                     (
+                        (
                         tm.MaNguoiGui = @me
                         AND tm.MaNguoiNhan = @other
+                        )
+
+                        OR
+
+                        (
+                            tm.MaNguoiGui = @other
+                            AND tm.MaNguoiNhan = @me
+                        )
                     )
 
-                    OR
-
-                    (
-                        tm.MaNguoiGui = @other
-                        AND tm.MaNguoiNhan = @me
-                    )
-
-                AND
+                    AND
                     (
                         (
                             @product IS NULL
@@ -311,7 +313,7 @@ class MessageDAL {
 
                     tm.NoiDung,
                     tm.DaDoc,
-                    tm.NgayGui,
+                    TODATETIMEOFFSET(tm.NgayGui, '+07:00') AS NgayGui,
 
                     sender.HoTen AS TenNguoiGui,
                     receiver.HoTen AS TenNguoiNhan,
