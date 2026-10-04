@@ -77,6 +77,7 @@ CREATE TABLE dbo.SanPhamDoCu(
     DiaChiXemHang NVARCHAR(500) NULL,
     HinhAnh VARCHAR(1000) NULL,
     TrangThai NVARCHAR(30) NOT NULL DEFAULT N'Chờ duyệt',
+    LyDoTuChoi NVARCHAR(1000) NULL,
     LuotXem INT NOT NULL DEFAULT 0,
     LuotYeuThich INT NOT NULL DEFAULT 0,
     NgayDang DATETIME2 NOT NULL DEFAULT SYSDATETIME(),
@@ -85,7 +86,8 @@ CREATE TABLE dbo.SanPhamDoCu(
     CONSTRAINT FK_SanPham_DanhMuc FOREIGN KEY(MaDanhMuc) REFERENCES dbo.DanhMuc(MaDanhMuc),
     CONSTRAINT CK_SanPham_Gia CHECK(GiaBan > 0),
     CONSTRAINT CK_SanPham_SoLuong CHECK(SoLuong >= 0),
-    CONSTRAINT CK_SanPham_Status CHECK(TrangThai IN(N'Chờ duyệt',N'Đang bán',N'Đã bán',N'Ẩn','Từ chối'))
+    CONSTRAINT CK_SanPham_Status CHECK(TrangThai IN(N'Chờ duyệt',N'Đang bán',N'Đã bán',N'Ẩn','Từ chối')),
+    CONSTRAINT CK_SanPham_TinhTrang CHECK(TinhTrang IN(N'Mới 99%',N'Đã qua sử dụng (còn tốt)',N'Cũ / Có trầy xước',N'Hỏng nhẹ / Cần sửa chữa'))
 );
 GO
 CREATE INDEX IX_SanPham_DanhMuc_Status ON dbo.SanPhamDoCu(MaDanhMuc,TrangThai);
@@ -207,6 +209,24 @@ CREATE TABLE dbo.DanhGia(
     CONSTRAINT FK_DG_SP FOREIGN KEY(MaSanPham) REFERENCES dbo.SanPhamDoCu(MaSanPham),
     CONSTRAINT CK_DG_Sao CHECK(SoSao BETWEEN 1 AND 5)
 );
+GO
+
+CREATE TABLE dbo.BaoCaoSanPham(
+    MaBaoCao INT IDENTITY(1,1) PRIMARY KEY,
+    MaSanPham INT NOT NULL,
+    MaNguoiBaoCao INT NOT NULL,
+    LoaiViPham NVARCHAR(100) NOT NULL,
+    ChiTiet NVARCHAR(1000) NULL,
+    TrangThai NVARCHAR(30) NOT NULL DEFAULT N'Chờ xử lý',
+    NgayBaoCao DATETIME2 NOT NULL DEFAULT SYSDATETIME(),
+    NgayXuLy DATETIME2 NULL,
+    CONSTRAINT FK_BaoCao_SP FOREIGN KEY(MaSanPham) REFERENCES dbo.SanPhamDoCu(MaSanPham) ON DELETE CASCADE,
+    CONSTRAINT FK_BaoCao_User FOREIGN KEY(MaNguoiBaoCao) REFERENCES dbo.NguoiDung(MaNguoiDung),
+    CONSTRAINT CK_BaoCao_Status CHECK(TrangThai IN(N'Chờ xử lý',N'Đã xử lý',N'Bỏ qua'))
+);
+GO
+CREATE UNIQUE INDEX UX_BaoCao_Open_User_Product ON dbo.BaoCaoSanPham(MaSanPham,MaNguoiBaoCao) WHERE TrangThai=N'Chờ xử lý';
+CREATE INDEX IX_BaoCao_Status_Date ON dbo.BaoCaoSanPham(TrangThai,NgayBaoCao DESC);
 GO
 
 CREATE TABLE dbo.ThongBao(

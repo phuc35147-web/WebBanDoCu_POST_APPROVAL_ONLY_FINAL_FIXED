@@ -1028,6 +1028,8 @@ function renderListings(products) {
                 product.maSanPham ||
                 product.id ||
                 '';
+            const status = product.TrangThai || 'Chưa xác định';
+            const rejectionReason = product.LyDoTuChoi || '';
 
 
             return `
@@ -1057,8 +1059,9 @@ function renderListings(products) {
 
                         <span>
                             <i class="bi bi-eye"></i>
-                            Đang hiển thị
+                            ${escapeHtml(status)}
                         </span>
+                        ${rejectionReason ? `<small class="text-danger mt-1">Lý do từ chối: ${escapeHtml(rejectionReason)}</small>` : ''}
 
                     </div>
 

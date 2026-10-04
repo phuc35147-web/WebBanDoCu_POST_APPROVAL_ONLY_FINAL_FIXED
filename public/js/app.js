@@ -624,7 +624,15 @@ async function fetchProducts() {
     try {
         const keyword = document.getElementById('searchKeyword')?.value.trim() || '';
         const location = document.getElementById('searchLocation')?.value || '';
-        const response = await fetch(`/api/products?${new URLSearchParams({ keyword, location })}`);
+        const filters = {
+            keyword,
+            location,
+            minPrice: document.getElementById('searchMinPrice')?.value || '',
+            maxPrice: document.getElementById('searchMaxPrice')?.value || '',
+            tinhTrang: document.getElementById('searchCondition')?.value || '',
+            sort: document.getElementById('searchSort')?.value || 'newest'
+        };
+        const response = await fetch(`/api/products?${new URLSearchParams(filters)}`);
         if (!response.ok) throw new Error('Không thể tải danh sách sản phẩm.');
         const products = await response.json();
         const renderProducts = items => items.length ? items.map(product => `
@@ -707,6 +715,10 @@ document.addEventListener("DOMContentLoaded", () => {
         loadSearchLocations();
         searchLocation.addEventListener('change', fetchProducts);
     }
+    ['searchMinPrice', 'searchMaxPrice', 'searchCondition', 'searchSort'].forEach(id => {
+        const control = document.getElementById(id);
+        if (control) control.addEventListener('change', fetchProducts);
+    });
 
     fetchProducts();
 

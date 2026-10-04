@@ -46,12 +46,12 @@ const poolPromise = new sql.ConnectionPool(config).connect().then(async pool => 
   const count=await pool.request().query('SELECT COUNT(*) total FROM SanPhamDoCu');
   if(Number(count.recordset[0].total)===0 && sellerId && cat.recordset.length){
     const products=[
-      ['iPhone 13 Pro 128GB','Máy đẹp, đầy đủ chức năng, pin ổn.',12500000,'Đã sử dụng tốt','TP. Hồ Chí Minh'],
-      ['MacBook Air M1 2020','Phù hợp học tập và văn phòng.',14500000,'Đã sử dụng tốt','TP. Hồ Chí Minh'],
-      ['Tai nghe Sony WH-1000XM4','Chống ồn tốt, hoạt động ổn định.',4200000,'Đã sử dụng','Đà Nẵng'],
-      ['Xe máy Honda Vision 2021','Xe bảo dưỡng định kỳ, giấy tờ đầy đủ.',26500000,'Đã sử dụng','TP. Hồ Chí Minh'],
-      ['Bàn học gỗ','Bàn chắc chắn, còn đẹp.',850000,'Đã sử dụng','Hà Nội'],
-      ['Sách Java cơ bản','Sách phù hợp sinh viên CNTT.',120000,'Còn rất mới','TP. Hồ Chí Minh']
+      ['iPhone 13 Pro 128GB','Máy đẹp, đầy đủ chức năng, pin ổn.',12500000,'Đã qua sử dụng (còn tốt)','TP. Hồ Chí Minh'],
+      ['MacBook Air M1 2020','Phù hợp học tập và văn phòng.',14500000,'Đã qua sử dụng (còn tốt)','TP. Hồ Chí Minh'],
+      ['Tai nghe Sony WH-1000XM4','Chống ồn tốt, hoạt động ổn định.',4200000,'Cũ / Có trầy xước','Đà Nẵng'],
+      ['Xe máy Honda Vision 2021','Xe bảo dưỡng định kỳ, giấy tờ đầy đủ.',26500000,'Đã qua sử dụng (còn tốt)','TP. Hồ Chí Minh'],
+      ['Bàn học gỗ','Bàn chắc chắn, còn đẹp.',850000,'Cũ / Có trầy xước','Hà Nội'],
+      ['Sách Java cơ bản','Sách phù hợp sinh viên CNTT.',120000,'Mới 99%','TP. Hồ Chí Minh']
     ];
     for(let i=0;i<products.length;i++){
       const p=products[i];

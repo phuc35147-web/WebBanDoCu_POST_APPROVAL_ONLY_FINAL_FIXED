@@ -218,6 +218,9 @@ app.get(
     product.getProductById
 );
 
+app.post('/api/products/:id/reviews', auth.verifyTokenMiddleware, product.review);
+app.post('/api/products/:id/reports', auth.verifyTokenMiddleware, product.report);
+
 app.post(
     '/api/products',
     auth.verifyTokenMiddleware,
@@ -275,6 +278,9 @@ app.patch(
     auth.verifyAdminMiddleware,
     admin.updateProductStatus
 );
+
+app.get('/api/admin/reports', auth.verifyAdminMiddleware, admin.getReports);
+app.patch('/api/admin/reports/:id', auth.verifyAdminMiddleware, admin.updateReport);
 
 app.get(
     '/api/admin/stats',

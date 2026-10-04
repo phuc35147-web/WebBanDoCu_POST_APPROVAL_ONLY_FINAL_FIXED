@@ -70,12 +70,16 @@ Admin được tạo theo `.env`.
 - `POST /api/auth/seller-registration`
 - `GET /api/products`
 - `GET /api/products/:id`
+- `POST /api/products/:id/reviews` (đơn hàng phải đã giao)
+- `POST /api/products/:id/reports`
 - `POST /api/products`
 - `POST /api/orders`
 - `GET /api/orders/:id`
 - `PATCH /api/orders/:id/cancel`
 - `GET /api/account`
 - `GET /api/admin/stats`
+- `GET /api/admin/reports`
+- `PATCH /api/admin/reports/:id`
 - `GET /api/admin/orders`
 - `PATCH /api/admin/orders/:id/status`
 
@@ -100,3 +104,10 @@ LUONG DANG TIN FINAL
 - Tin moi: Cho duyet.
 - Chi Admin duyet tin: Dang ban/Tu choi/An/Da ban.
 - Khong can chay quy trinh seller registration.
+
+## Các tính năng an toàn tin đăng
+- Với CSDL đang sử dụng, chạy `database/FEATURE_QUICK_WINS_MIGRATION.sql` trong SSMS trước khi khởi động phiên bản mã mới.
+- Admin phải nhập lý do khi từ chối tin; người đăng xem lý do trong mục tin đăng của tài khoản.
+- Người dùng đã đăng nhập có thể báo cáo tin vi phạm. Admin xem danh sách báo cáo và có thể ẩn tin, xử lý hoặc bỏ qua.
+- Người mua chỉ được đánh giá người bán sau khi đơn hàng ở trạng thái `Đã giao`; điểm trung bình và nhận xét hiển thị trên trang chi tiết sản phẩm.
+- Tình trạng đồ dùng được giới hạn ở bốn mức chuẩn. Danh sách sản phẩm hỗ trợ lọc theo khu vực, giá, tình trạng và sắp xếp theo thời gian/giá.

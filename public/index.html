@@ -248,6 +248,30 @@
                     </button>
                 </div>
             </div>
+            <div class="row g-2 mt-2 px-2">
+                <div class="col-6 col-lg">
+                    <input id="searchMinPrice" type="number" min="0" class="form-control" placeholder="Giá từ (VNĐ)">
+                </div>
+                <div class="col-6 col-lg">
+                    <input id="searchMaxPrice" type="number" min="0" class="form-control" placeholder="Giá đến (VNĐ)">
+                </div>
+                <div class="col-12 col-lg">
+                    <select id="searchCondition" class="form-select">
+                        <option value="">Mọi tình trạng</option>
+                        <option>Mới 99%</option>
+                        <option>Đã qua sử dụng (còn tốt)</option>
+                        <option>Cũ / Có trầy xước</option>
+                        <option>Hỏng nhẹ / Cần sửa chữa</option>
+                    </select>
+                </div>
+                <div class="col-12 col-lg">
+                    <select id="searchSort" class="form-select" aria-label="Sắp xếp sản phẩm">
+                        <option value="newest">Mới nhất</option>
+                        <option value="price-asc">Giá tăng dần</option>
+                        <option value="price-desc">Giá giảm dần</option>
+                    </select>
+                </div>
+            </div>
         </div>
     </div>
 </header>
@@ -506,11 +530,10 @@
                                                 <label for="postCondition" class="form-label fw-semibold">Tình trạng <span class="text-danger">*</span></label>
                                                 <select id="postCondition" name="tinhTrang" class="form-select" required>
                                                     <option value="">-- Chọn tình trạng --</option>
-                                                    <option>Còn như mới</option>
-                                                    <option>Đã sử dụng tốt</option>
-                                                    <option>Đã sử dụng</option>
-                                                    <option>Cũ, có dấu hiệu sử dụng</option>
-                                                    <option>Cần sửa chữa</option>
+                                                    <option>Mới 99%</option>
+                                                    <option>Đã qua sử dụng (còn tốt)</option>
+                                                    <option>Cũ / Có trầy xước</option>
+                                                    <option>Hỏng nhẹ / Cần sửa chữa</option>
                                                 </select>
                                             </div>
                                             <div class="col-md-8">

@@ -36,6 +36,18 @@
                 <tbody id="productTable"></tbody>
             </table>
         </div>
+        <section class="mt-5">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2>Báo cáo vi phạm</h2>
+                <button class="btn btn-outline-primary" type="button" onclick="loadReports()">Làm mới</button>
+            </div>
+            <div class="table-responsive bg-white rounded shadow-sm">
+                <table class="table table-hover align-middle mb-0">
+                    <thead><tr><th>Tin đăng</th><th>Người báo cáo</th><th>Lý do / Nội dung</th><th>Ngày báo cáo</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+                    <tbody id="reportTable"></tbody>
+                </table>
+            </div>
+        </section>
     </main>
     <script>
         const token = localStorage.getItem('adminToken');
@@ -43,6 +55,7 @@
         if (!token || user.tokenType !== 'admin') location.href = '/admin-login.html';
         const authHeaders = () => ({ Authorization: 'Bearer ' + token });
         const money = value => Number(value || 0).toLocaleString('vi-VN') + ' đ';
+        const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[ch]));
         const showMessage = (text, type = 'danger') => {
             const message = document.getElementById('message');
             message.className = 'alert alert-' + type;
@@ -69,22 +82,65 @@
             if (res.status === 401 || res.status === 403) return location.href = '/admin-login.html';
             const products = await res.json();
             document.getElementById('productTable').innerHTML = products.map(p => `
-                <tr><td><b>${p.TenSanPham || ''}</b><br><small>${p.TenDanhMuc || ''}</small></td>
-                <td>${p.TenNguoiBan || ''}<br><small>${p.EmailNguoiBan || ''}</small></td>
+                <tr><td><b>${escapeHtml(p.TenSanPham)}</b><br><small>${escapeHtml(p.TenDanhMuc)}</small>${p.LyDoTuChoi ? `<br><small class="text-danger">Lý do từ chối: ${escapeHtml(p.LyDoTuChoi)}</small>` : ''}</td>
+                <td>${escapeHtml(p.TenNguoiBan)}<br><small>${escapeHtml(p.EmailNguoiBan)}</small></td>
                 <td>${money(p.GiaBan)}</td><td>${p.NgayDang ? new Date(p.NgayDang).toLocaleDateString('vi-VN') : ''}</td>
-                <td><select class="form-select form-select-sm" onchange="changeStatus(${p.MaSanPham}, this.value)">
+                <td><select class="form-select form-select-sm" data-previous="${escapeHtml(p.TrangThai)}" onchange="changeStatus(${p.MaSanPham}, this)">
                     ${['Chờ duyệt', 'Đang bán', 'Từ chối', 'Đã bán', 'Ẩn'].map(s => `<option ${s === p.TrangThai ? 'selected' : ''}>${s}</option>`).join('')}
                 </select></td></tr>`).join('');
         }
-        async function changeStatus(id, trangThai) {
+        async function changeStatus(id, select) {
+            const trangThai = select.value;
+            let lyDoTuChoi = '';
+            if (trangThai === 'Từ chối') {
+                const enteredReason = prompt('Nhập lý do từ chối để người đăng biết cần chỉnh sửa:');
+                if (enteredReason === null) {
+                    select.value = select.dataset.previous || 'Chờ duyệt';
+                    return;
+                }
+                lyDoTuChoi = enteredReason.trim();
+                if (!lyDoTuChoi) {
+                    select.value = select.dataset.previous || 'Chờ duyệt';
+                    return showMessage('Cần nhập lý do trước khi từ chối tin đăng.');
+                }
+            }
             const res = await fetch('/api/admin/products/' + id + '/status', {
-                method: 'PATCH', headers: { ...authHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify({ trangThai })
+                method: 'PATCH', headers: { ...authHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify({ trangThai, lyDoTuChoi })
             });
-            if (!res.ok) showMessage((await res.json()).message || 'Không thể cập nhật trạng thái.');
+            if (!res.ok) {
+                select.value = select.dataset.previous || 'Chờ duyệt';
+                return showMessage((await res.json()).message || 'Không thể cập nhật trạng thái.');
+            }
+            select.dataset.previous = trangThai;
+            loadProducts();
+        }
+        async function loadReports() {
+            const res = await fetch('/api/admin/reports', { headers: authHeaders() });
+            if (res.status === 401 || res.status === 403) return location.href = '/admin-login.html';
+            const reports = await res.json();
+            if (!res.ok) throw new Error(reports.message || 'Không thể tải báo cáo.');
+            document.getElementById('reportTable').innerHTML = reports.length ? reports.map(report => `
+                <tr><td><a target="_blank" rel="noopener" href="/product-detail.html?id=${encodeURIComponent(report.MaSanPham)}">${escapeHtml(report.TenSanPham)}</a><br><small>${escapeHtml(report.TrangThaiSanPham)}</small></td>
+                <td>${escapeHtml(report.TenNguoiBao)}<br><small>${escapeHtml(report.EmailNguoiBao)}</small></td>
+                <td><strong>${escapeHtml(report.LoaiViPham)}</strong>${report.ChiTiet ? `<br>${escapeHtml(report.ChiTiet)}` : ''}</td>
+                <td>${report.NgayBaoCao ? new Date(report.NgayBaoCao).toLocaleString('vi-VN') : ''}</td>
+                <td>${escapeHtml(report.TrangThai)}</td>
+                <td>${report.TrangThai === 'Chờ xử lý' ? `<div class="d-flex gap-1"><button class="btn btn-sm btn-danger" onclick="resolveReport(${report.MaBaoCao}, true)">Ẩn tin & xử lý</button><button class="btn btn-sm btn-outline-secondary" onclick="resolveReport(${report.MaBaoCao}, false)">Bỏ qua</button></div>` : '—'}</td></tr>`).join('') : '<tr><td colspan="6" class="text-center text-muted py-4">Chưa có báo cáo.</td></tr>';
+        }
+        async function resolveReport(id, hideProduct) {
+            const trangThai = hideProduct ? 'Đã xử lý' : 'Bỏ qua';
+            const res = await fetch('/api/admin/reports/' + id, {
+                method: 'PATCH', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ trangThai, anTin: hideProduct })
+            });
+            const data = await res.json();
+            if (!res.ok) return showMessage(data.message || 'Không thể cập nhật báo cáo.');
+            showMessage(data.message, 'success');
+            await Promise.all([loadReports(), loadProducts()]);
         }
         function logout() { localStorage.removeItem('adminToken'); localStorage.removeItem('adminUser'); location.href = '/admin-login.html'; }
         document.getElementById('homepageForm').addEventListener('submit', saveHomepageContent);
-        Promise.all([loadHomepageContent(), loadProducts()]).catch(error => showMessage(error.message || 'Không thể tải dữ liệu quản trị.'));
+        Promise.all([loadHomepageContent(), loadProducts(), loadReports()]).catch(error => showMessage(error.message || 'Không thể tải dữ liệu quản trị.'));
     </script>
 </body>
 </html>

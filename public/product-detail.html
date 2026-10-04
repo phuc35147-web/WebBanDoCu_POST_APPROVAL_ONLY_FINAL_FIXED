@@ -48,17 +48,41 @@ async function loadProduct(){
     <div class="col-lg-6"><div class="detail-info">
       <span class="detail-category">${esc(p.TenDanhMuc||'Đồ cũ')}</span><h1 class="detail-title">${esc(p.TenSanPham)}</h1><div class="detail-price">${money(p.GiaBan)}</div>
       <div class="detail-meta-grid"><div class="detail-meta"><small>Tình trạng</small><strong>${esc(p.TinhTrang||'Đang cập nhật')}</strong></div><div class="detail-meta"><small>Đăng ngày</small><strong>${date(p.NgayDang)||'Đang cập nhật'}</strong></div><div class="detail-meta"><small>Lượt xem</small><strong>${Number(p.LuotXem||0)}</strong></div><div class="detail-meta"><small>Khu vực</small><strong>${esc(p.DiaChiXemHang||'Đang cập nhật')}</strong></div></div>
-      <div class="seller-box"><div class="d-flex align-items-center gap-3"><div class="seller-avatar">${esc((p.TenNguoiBan||'N').trim().charAt(0).toUpperCase())}</div><div><div class="fw-bold fs-5">${esc(p.TenNguoiBan||'Người bán')}</div><div class="text-muted small">Thành viên đăng tin trên Chợ Đồ Cũ</div></div></div><div class="small text-muted mt-3"><i class="bi bi-geo-alt me-1"></i>${esc(p.DiaChiXemHang||'Chưa cập nhật')} · <i class="bi bi-telephone me-1"></i>${esc(p.SdtNguoiBan||'Liên hệ qua tin nhắn')}</div></div>
+      <div class="seller-box"><div class="d-flex align-items-center gap-3"><div class="seller-avatar">${esc((p.TenNguoiBan||'N').trim().charAt(0).toUpperCase())}</div><div><div class="fw-bold fs-5">${esc(p.TenNguoiBan||'Người bán')}</div><div class="text-muted small">Thành viên đăng tin trên Chợ Đồ Cũ</div><div class="text-warning fw-semibold">${Number(p.TongDanhGia||0)>0?`★ ${Number(p.SoSaoTrungBinh).toFixed(1)} / 5 · ${Number(p.TongDanhGia)} đánh giá`:'Chưa có đánh giá'}</div></div></div><div class="small text-muted mt-3"><i class="bi bi-geo-alt me-1"></i>${esc(p.DiaChiXemHang||'Chưa cập nhật')} · <i class="bi bi-telephone me-1"></i>${esc(p.SdtNguoiBan||'Liên hệ qua tin nhắn')}</div></div>
       <div class="detail-action-row"><button class="detail-chat-btn" onclick="openSellerChat()"><i class="bi bi-chat-dots me-2"></i>Chat với người bán</button><button class="detail-save-btn" onclick="toggleSave()"><i class="bi bi-heart me-2"></i>Lưu tin</button></div>
     </div></div>
     <div class="col-12"><div class="detail-description"><h3 class="fw-bold">Mô tả sản phẩm</h3><p class="mb-0" style="white-space:pre-line">${esc(p.MoTa||'Người bán chưa thêm mô tả.')}</p></div></div>
+    <div class="col-12">
+      <div class="detail-description">
+        <h3 class="fw-bold">Đánh giá người bán</h3>
+        <div>${(p.DanhGiaNguoiBan||[]).length?p.DanhGiaNguoiBan.map(review=>`<div class="border-bottom py-2"><div class="text-warning">${'★'.repeat(Number(review.SoSao))}${'☆'.repeat(5-Number(review.SoSao))}</div><strong>${esc(review.TenNguoiMua)}</strong><small class="text-muted ms-2">${date(review.NgayDanhGia)}</small><p class="mb-0">${esc(review.NoiDung||'Không có bình luận.')}</p></div>`).join(''):'<p class="text-muted">Người bán chưa có đánh giá.</p>'}</div>
+        <form id="reviewForm" class="mt-3">
+          <h5>Chia sẻ trải nghiệm sau khi nhận hàng</h5>
+          <div class="row g-2"><div class="col-md-3"><label class="form-label" for="reviewRating">Số sao</label><select id="reviewRating" class="form-select" required><option value="">Chọn sao</option><option value="5">5 sao</option><option value="4">4 sao</option><option value="3">3 sao</option><option value="2">2 sao</option><option value="1">1 sao</option></select></div><div class="col-md-9"><label class="form-label" for="reviewComment">Bình luận (không bắt buộc)</label><input id="reviewComment" class="form-control" maxlength="1000"></div></div>
+          <button class="btn btn-primary mt-2" type="submit">Gửi đánh giá</button><span id="reviewMessage" class="small ms-2" role="status"></span>
+        </form>
+      </div>
+      <div class="text-end mt-2"><button id="reportToggle" class="btn btn-sm btn-outline-danger" type="button">Báo cáo tin đăng</button></div>
+      <form id="reportForm" class="border rounded p-3 mt-2 d-none">
+        <h5 class="mb-3">Báo cáo tin đăng vi phạm</h5>
+        <label class="form-label" for="reportReason">Lý do</label>
+        <select id="reportReason" class="form-select mb-2" required><option value="">Chọn lý do</option><option>Hàng giả</option><option>Hàng cấm</option><option>Thông tin sai sự thật</option><option>Nghi ngờ lừa đảo</option><option>Lý do khác</option></select>
+        <label class="form-label" for="reportDetails">Thông tin bổ sung</label><textarea id="reportDetails" class="form-control" maxlength="1000" rows="3"></textarea>
+        <button class="btn btn-danger mt-2" type="submit">Gửi báo cáo</button><span id="reportMessage" class="small ms-2" role="status"></span>
+      </form>
+    </div>
    </div>
   </div>`;
   loadSimilar(p.MaDanhMuc,p.MaSanPham);
+  document.getElementById('reviewForm').addEventListener('submit', submitReview);
+  document.getElementById('reportToggle').addEventListener('click',()=>document.getElementById('reportForm').classList.toggle('d-none'));
+  document.getElementById('reportForm').addEventListener('submit', submitReport);
  }catch(e){box.innerHTML=`<div class="alert alert-danger">${esc(e.message)}</div>`;}
 }
 function changeImage(el,src){document.getElementById('mainProductImage').src=src;document.querySelectorAll('.detail-thumb').forEach(x=>x.classList.remove('active'));el.classList.add('active');}
 async function loadSimilar(cat,id){try{const r=await fetch('/api/products?maDanhMuc='+encodeURIComponent(cat));const a=await r.json();const items=(Array.isArray(a)?a:[]).filter(x=>Number(x.MaSanPham)!==Number(id)).slice(0,5);if(!items.length)return;document.getElementById('similarProducts').innerHTML=items.map(productCard).join('');document.getElementById('similarSection').classList.remove('d-none');}catch(e){}}
+async function submitReview(event){event.preventDefault();const token=localStorage.getItem('token');if(!token){location.href='/auth.html?mode=login';return;}const message=document.getElementById('reviewMessage');try{const response=await fetch(`/api/products/${currentProduct.MaSanPham}/reviews`,{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({soSao:document.getElementById('reviewRating').value,noiDung:document.getElementById('reviewComment').value})});const data=await response.json();if(!response.ok)throw new Error(data.message||'Không gửi được đánh giá.');await loadProduct();const updatedMessage=document.getElementById('reviewMessage');updatedMessage.className='small ms-2 text-success';updatedMessage.textContent=data.message;}catch(error){message.className='small ms-2 text-danger';message.textContent=error.message;}}
+async function submitReport(event){event.preventDefault();const token=localStorage.getItem('token');if(!token){location.href='/auth.html?mode=login';return;}const message=document.getElementById('reportMessage');try{const response=await fetch(`/api/products/${currentProduct.MaSanPham}/reports`,{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({loaiViPham:document.getElementById('reportReason').value,chiTiet:document.getElementById('reportDetails').value})});const data=await response.json();if(!response.ok)throw new Error(data.message||'Không gửi được báo cáo.');message.className='small ms-2 text-success';message.textContent=data.message;document.getElementById('reportForm').reset();}catch(error){message.className='small ms-2 text-danger';message.textContent=error.message;}}
 async function toggleSave(){const token=localStorage.getItem('token');if(!token){location.href='/auth.html?mode=login';return;}alert('Tin đã được ghi nhận. Chức năng đồng bộ danh sách tin lưu đang được hoàn thiện.');}
 
 let chatStreamAbort = null;
